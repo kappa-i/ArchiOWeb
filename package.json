@@ -1,0 +1,49 @@
+{
+  "name": "archioweb-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "REST API â€” projet ArchiOWeb (COMEM+ HEIG-VD)",
+  "type": "module",
+  "main": "bin/start.js",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node bin/start.js",
+    "dev": "node --env-file-if-exists=.env --watch-path=app.js --watch-path=bin --watch-path=config.js --watch-path=lib --watch-path=middleware --watch-path=models --watch-path=routes --watch-path=openapi.yml bin/start.js",
+    "test": "cross-env NODE_ENV=test DATABASE_URL=mongodb://127.0.0.1/archioweb-test node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --runInBand --passWithNoTests",
+    "test:watch": "cross-env NODE_ENV=test DATABASE_URL=mongodb://127.0.0.1/archioweb-test node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --watch",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "jest-extended/all"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/tests/"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 75
+      }
+    }
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "js-yaml": "^5.5.0",
+    "mongoose": "^9.11.2",
+    "morgan": "^1.12.1",
+    "swagger-ui-express": "^5.0.1",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "jest": "^30.5.2",
+    "jest-extended": "^7.0.0",
+    "prettier": "^3.9.10",
+    "supertest": "^7.3.1"
+  }
+}

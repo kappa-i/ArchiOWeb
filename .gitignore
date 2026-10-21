@@ -1,0 +1,10 @@
+node_modules/
+coverage/
+.env
+.DS_Store
+*.log
+
+# Local tooling
+CLAUDE.md
+CLAUDE.local.md
+.claude/

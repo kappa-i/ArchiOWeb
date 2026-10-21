@@ -27,4 +27,3 @@ cp .env.example .env
 ## Équipe
 
 _À compléter_
-# ArchiOWeb

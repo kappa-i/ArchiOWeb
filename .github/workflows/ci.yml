@@ -7,14 +7,14 @@ on:
 
 jobs:
   test:
-    # Not ubuntu-latest: MongoDB 8.0 crashes on Linux kernel 6.19+ (SERVER-121912)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     services:
       mongo:
-        image: mongo:8.0
+        # MongoDB 7.0 ici : la 8.0 ne démarre pas sur les machines GitHub (bug SERVER-121912)
+        image: mongo:7.0
         ports:
           - 27017:27017
-        # Wait until MongoDB answers before running the steps
+        # Attend que MongoDB réponde avant de lancer les tests
         options: >-
           --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
           --health-interval 5s

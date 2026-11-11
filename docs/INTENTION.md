@@ -69,6 +69,8 @@ Calculées par l'API (agrégation MongoDB) à partir de la collection `resultats
 
 Chaque document a un `_id` (ObjectId) généré par MongoDB. Les références contiennent l'`_id` du document visé ; MongoDB ne les vérifie pas, c'est l'API qui doit valider que les ressources liées existent.
 
+**Noms dans le code** (en anglais) : `hotes` → `hosts` (`nb_rooms_creees` → `roomsCreated`), `rooms.hote` → `host`, `statut` → `status`, `parametres` → `settings` (`nb_joueurs_max` → `maxPlayers` de 2 à 8, `nb_manches` → `rounds` de 1 à 10, `duree_tour_sec` → `turnDuration` de 30 à 180 s).
+
 ### Vue d'ensemble
 
 | Collection     | Rôle                                                                 | Références                      |
@@ -241,12 +243,12 @@ Légende de la colonne Auth :
 
 ### Rooms
 
-| Méthode | URL                       | Description                                                             | Auth   |
-| ------- | ------------------------- | ----------------------------------------------------------------------- | ------ |
-| `POST`  | `/rooms`                  | Créer une room (code généré, paramètres par défaut, l'hôte y participe) | Compte |
-| `GET`   | `/rooms/:code`            | Voir une room (statut, paramètres)                                      | Joueur |
-| `PATCH` | `/rooms/:code/parametres` | Modifier les paramètres (seulement avant le début)                      | Hôte   |
-| `PATCH` | `/rooms/:code`            | Lancer la partie (`statut` → `playing`)                                 | Hôte   |
+| Méthode | URL                     | Description                                                             | Auth                                              |
+| ------- | ----------------------- | ----------------------------------------------------------------------- | ------------------------------------------------- |
+| `POST`  | `/rooms`                | Créer une room (code généré, paramètres par défaut, l'hôte y participe) | Compte                                            |
+| `GET`   | `/rooms/:code`          | Voir une room (statut, paramètres)                                      | Compte (Joueur quand les participants existeront) |
+| `PATCH` | `/rooms/:code/settings` | Modifier les paramètres (seulement avant le début)                      | Hôte                                              |
+| `PATCH` | `/rooms/:code`          | Lancer la partie (`statut` → `playing`)                                 | Hôte                                              |
 
 ### Participants
 
@@ -286,21 +288,21 @@ Chaque joueur ouvre une connexion WebSocket en envoyant son jeton JWT. Il reçoi
 
 ### Messages envoyés par le serveur
 
-| Message              | Envoyé à                 | Quand                                                                |
-| -------------------- | ------------------------ | -------------------------------------------------------------------- |
-| `player-joined`      | Toute la room            | Un joueur rejoint la room                                            |
-| `player-excluded`    | Toute la room            | L'hôte exclut un joueur                                              |
-| `player-left`        | Toute la room            | Un joueur quitte la room                                             |
-| `host-changed`       | Toute la room            | L'hôte est parti : nom du nouvel hôte                                |
-| `parametres-updated` | Toute la room            | L'hôte modifie les paramètres                                        |
-| `game-started`       | Toute la room            | L'hôte lance la partie                                               |
-| `round-started`      | Toute la room            | Début d'un tour : qui dessine, durée (sans le mot)                   |
-| `word-to-draw`       | Le dessinateur seulement | Début de son tour : le mot à dessiner                                |
-| `stroke`             | Toute la room sauf lui   | Le dessinateur a tracé un trait                                      |
-| `guess`              | Toute la room            | Une proposition fausse (texte affiché dans le chat)                  |
-| `word-found`         | Toute la room            | Un joueur a trouvé (son nom et ses points, **sans** le mot)          |
-| `round-ended`        | Toute la room            | Fin du tour : le mot est révélé, scores mis à jour                   |
-| `game-ended`         | Toute la room            | Fin de la partie : récapitulatif (classement, points, mots trouvés…) |
+| Message            | Envoyé à                 | Quand                                                                |
+| ------------------ | ------------------------ | -------------------------------------------------------------------- |
+| `player-joined`    | Toute la room            | Un joueur rejoint la room                                            |
+| `player-excluded`  | Toute la room            | L'hôte exclut un joueur                                              |
+| `player-left`      | Toute la room            | Un joueur quitte la room                                             |
+| `host-changed`     | Toute la room            | L'hôte est parti : nom du nouvel hôte                                |
+| `settings-updated` | Toute la room            | L'hôte modifie les paramètres                                        |
+| `game-started`     | Toute la room            | L'hôte lance la partie                                               |
+| `round-started`    | Toute la room            | Début d'un tour : qui dessine, durée (sans le mot)                   |
+| `word-to-draw`     | Le dessinateur seulement | Début de son tour : le mot à dessiner                                |
+| `stroke`           | Toute la room sauf lui   | Le dessinateur a tracé un trait                                      |
+| `guess`            | Toute la room            | Une proposition fausse (texte affiché dans le chat)                  |
+| `word-found`       | Toute la room            | Un joueur a trouvé (son nom et ses points, **sans** le mot)          |
+| `round-ended`      | Toute la room            | Fin du tour : le mot est révélé, scores mis à jour                   |
+| `game-ended`       | Toute la room            | Fin de la partie : récapitulatif (classement, points, mots trouvés…) |
 
 ## Fonctionnalités mobiles (optionnel)
 

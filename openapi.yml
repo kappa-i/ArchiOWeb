@@ -21,6 +21,8 @@ tags:
     description: Authentication
   - name: users
     description: User accounts
+  - name: rooms
+    description: Game rooms
 
 paths:
   /auth/login:
@@ -142,12 +144,110 @@ paths:
         404:
           $ref: '#/components/responses/UserNotFound'
 
+  /rooms:
+    post:
+      summary: Create a room.
+      description: >-
+        The authenticated user becomes the host of the room.
+        A unique 6-character code is generated, and the settings get their default values.
+      tags:
+        - rooms
+      security:
+        - bearerAuth: []
+      responses:
+        201:
+          description: The room was created.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/UserNotFound'
+
+  /rooms/{code}:
+    get:
+      summary: Get a room.
+      tags:
+        - rooms
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+      responses:
+        200:
+          description: The room, with its settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/RoomNotFound'
+
+  /rooms/{code}/settings:
+    patch:
+      summary: Update the settings of a room.
+      description: >-
+        Only the host can do it, and only before the game has started.
+        Only the fields sent in the body are modified.
+      tags:
+        - rooms
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettingsUpdate'
+      responses:
+        200:
+          description: The room, with its updated settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/RoomNotFound'
+        409:
+          description: The game has already started.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: The game has already started
+        422:
+          $ref: '#/components/responses/ValidationError'
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  parameters:
+    RoomCode:
+      name: code
+      in: path
+      required: true
+      description: Code of the room (case insensitive).
+      schema:
+        type: string
+        example: K7PX2M
 
   headers:
     Location:
@@ -187,6 +287,84 @@ components:
         - email
         - createdAt
         - updatedAt
+
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 66b9d6c2f1a2b3c4d5e6f7a9
+        code:
+          type: string
+          description: 6 characters, used to join the room.
+          example: K7PX2M
+        status:
+          type: string
+          enum:
+            - waiting
+            - playing
+            - finished
+        hostUserId:
+          type: string
+          description: ID of the user who hosts the room.
+          example: 66b9d6c2f1a2b3c4d5e6f7a8
+        settings:
+          $ref: '#/components/schemas/Settings'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - code
+        - status
+        - hostUserId
+        - settings
+        - createdAt
+        - updatedAt
+
+    Settings:
+      type: object
+      properties:
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 8
+          default: 8
+        rounds:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 3
+        turnDuration:
+          type: integer
+          description: Duration of a turn, in seconds.
+          minimum: 30
+          maximum: 180
+          default: 80
+      required:
+        - maxPlayers
+        - rounds
+        - turnDuration
+
+    SettingsUpdate:
+      type: object
+      description: Same constraints as the settings, but all fields are optional.
+      properties:
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 8
+        rounds:
+          type: integer
+          minimum: 1
+          maximum: 10
+        turnDuration:
+          type: integer
+          minimum: 30
+          maximum: 180
 
     UserCreate:
       type: object
@@ -296,6 +474,23 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             message: User not found
+    Forbidden:
+      description: The authenticated user is not allowed to do this.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Only the host of the room can do this
+    RoomNotFound:
+      description: No room has this code.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Room not found
+
     Conflict:
       description: The username or the email is already used.
       content:

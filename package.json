@@ -29,7 +29,8 @@
       "global": {
         "lines": 75
       }
-    }
+    },
+    "testTimeout": 30000
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

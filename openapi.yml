@@ -5,10 +5,308 @@ info:
   description: >-
     REST API of **Devin'Art**, a multiplayer draw-and-guess game.
     One player draws a secret word while the others try to guess it as fast as possible.
+
+
+    **Authentication:** log in with `POST /auth/login` to get a token, then send it
+    in the `Authorization: Bearer <token>` header of protected requests.
+    Tokens expire after 7 days.
   version: 0.1.0
 
 servers:
   - url: http://localhost:3000
     description: Local development server
 
-paths: {}
+tags:
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User accounts
+
+paths:
+  /auth/login:
+    post:
+      summary: Log in.
+      description: Returns a token to authenticate the next requests.
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        200:
+          description: The credentials are valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          description: The email or the password is wrong.
+          headers:
+            WWW-Authenticate:
+              $ref: '#/components/headers/WWW-Authenticate'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: Invalid email or password
+
+  /users:
+    post:
+      summary: Register a new user.
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        201:
+          description: The user was created.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/ValidationError'
+
+  /users/me:
+    get:
+      summary: Get the authenticated user.
+      tags:
+        - users
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: The authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/UserNotFound'
+    patch:
+      summary: Update the authenticated user.
+      description: Only the fields sent in the body are modified.
+      tags:
+        - users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        200:
+          description: The updated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/UserNotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      summary: Delete the authenticated user.
+      tags:
+        - users
+      security:
+        - bearerAuth: []
+      responses:
+        204:
+          description: The user was deleted.
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/UserNotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  headers:
+    Location:
+      description: URL of the created resource.
+      schema:
+        type: string
+        example: /users/66b9d6c2f1a2b3c4d5e6f7a8
+    WWW-Authenticate:
+      description: How to authenticate.
+      schema:
+        type: string
+        example: Bearer
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 66b9d6c2f1a2b3c4d5e6f7a8
+        username:
+          type: string
+          example: jdoe
+        email:
+          type: string
+          format: email
+          example: jdoe@example.com
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - username
+        - email
+        - createdAt
+        - updatedAt
+
+    UserCreate:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 20
+          description: Must be unique. Spaces at the start and end are removed.
+          example: jdoe
+        email:
+          type: string
+          format: email
+          description: Must be unique. Stored in lowercase.
+          example: jdoe@example.com
+        password:
+          type: string
+          minLength: 8
+          example: password123
+      required:
+        - username
+        - email
+        - password
+
+    UserUpdate:
+      type: object
+      description: Same constraints as for the creation, but all fields are optional.
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 20
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    Credentials:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: jdoe@example.com
+        password:
+          type: string
+          example: password123
+      required:
+        - email
+        - password
+
+    Token:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT to send in the `Authorization` header.
+      required:
+        - token
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 'User validation failed: email: Path `email` is invalid.'
+        errors:
+          type: object
+          description: Details for each invalid field (only for schema validation errors).
+          additionalProperties: true
+      required:
+        - message
+
+  responses:
+    BadRequest:
+      description: The request body is malformed or a required field is missing.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: The token is missing, invalid or expired.
+      headers:
+        WWW-Authenticate:
+          $ref: '#/components/headers/WWW-Authenticate'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: A bearer token is required
+    UserNotFound:
+      description: The user of the token no longer exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: User not found
+    Conflict:
+      description: The username or the email is already used.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: A resource with the same value already exists
+    ValidationError:
+      description: Some fields are invalid (e.g. password too short, invalid email).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'

@@ -8,3 +8,6 @@ coverage/
 CLAUDE.md
 CLAUDE.local.md
 .claude/
+
+# Personal notes on each feature
+notes/

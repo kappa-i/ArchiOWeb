@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import app from '../app.js';
 import * as config from '../config.js';
 
+// Connexion à MongoDB, puis démarrage du serveur
 await mongoose.connect(config.databaseUrl);
 console.log(`Connected to MongoDB at ${config.databaseUrl}`);
 

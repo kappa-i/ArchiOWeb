@@ -10,9 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mongo:
-        image: mongo:8.0
+        # MongoDB 7.0 ici : la 8.0 ne démarre pas sur les machines GitHub (bug SERVER-121912)
+        image: mongo:7.0
         ports:
           - 27017:27017
+        # Attend que MongoDB réponde avant de lancer les tests
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

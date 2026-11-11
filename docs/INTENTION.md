@@ -88,12 +88,12 @@ Toutes les collections sauf `users`, `hotes`, `mots` et `resultats` sont **tempo
 
 ### `users`
 
-| Champ           | Contraintes    |
-| --------------- | -------------- |
-| `username`      | requis, unique |
-| `email`         | requis, unique |
-| `password_hash` | requis         |
-| `created_at`    | —              |
+| Champ                    | Contraintes                                           |
+| ------------------------ | ----------------------------------------------------- |
+| `username`               | requis, unique                                        |
+| `email`                  | requis, unique                                        |
+| `password`               | requis (hash bcrypt, jamais le mot de passe en clair) |
+| `createdAt`, `updatedAt` | ajoutés automatiquement                               |
 
 ### `hotes`
 
@@ -232,7 +232,7 @@ Légende de la colonne Auth :
 | Méthode  | URL                  | Description                                                                           | Auth   |
 | -------- | -------------------- | ------------------------------------------------------------------------------------- | ------ |
 | `POST`   | `/users`             | S'inscrire                                                                            | —      |
-| `POST`   | `/auth/login`        | Se connecter (renvoie un JWT)                                                         | —      |
+| `POST`   | `/auth/login`        | Se connecter avec e-mail et mot de passe (renvoie un JWT)                             | —      |
 | `GET`    | `/users/me`          | Voir son profil                                                                       | Compte |
 | `PATCH`  | `/users/me`          | Modifier son profil (nom d'utilisateur, e-mail, mot de passe)                         | Compte |
 | `DELETE` | `/users/me`          | Supprimer son compte                                                                  | Compte |

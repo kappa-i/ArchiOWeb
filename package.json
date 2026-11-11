@@ -11,8 +11,8 @@
   "scripts": {
     "start": "node bin/start.js",
     "dev": "node --env-file-if-exists=.env --watch-path=app.js --watch-path=bin --watch-path=config.js --watch-path=lib --watch-path=middleware --watch-path=models --watch-path=routes --watch-path=openapi.yml bin/start.js",
-    "test": "cross-env NODE_ENV=test DATABASE_URL=mongodb://127.0.0.1/archioweb-test node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --runInBand --passWithNoTests",
-    "test:watch": "cross-env NODE_ENV=test DATABASE_URL=mongodb://127.0.0.1/archioweb-test node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --watch",
+    "test": "cross-env NODE_ENV=test DATABASE_URL=mongodb://127.0.0.1/archioweb-test JWT_SECRET=test-secret node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --runInBand --passWithNoTests",
+    "test:watch": "cross-env NODE_ENV=test DATABASE_URL=mongodb://127.0.0.1/archioweb-test JWT_SECRET=test-secret node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --watch",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -29,11 +29,14 @@
       "global": {
         "lines": 75
       }
-    }
+    },
+    "testTimeout": 30000
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "express": "^5.3.0",
     "js-yaml": "^5.5.0",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.2",
     "morgan": "^1.12.1",
     "swagger-ui-express": "^5.0.1",

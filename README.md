@@ -19,6 +19,32 @@ npm ci
 cp .env.example .env
 ```
 
+### Secret JWT (obligatoire)
+
+L'API signe les jetons de connexion avec un secret. Sans lui, `npm run dev` refuse de démarrer.
+
+1. Générer un secret :
+
+   ```sh
+   node -p "crypto.randomBytes(32).toString('base64')"
+   ```
+
+2. Le coller dans le fichier `.env` :
+
+   ```
+   JWT_SECRET=le_résultat_de_la_commande
+   ```
+
+Chaque membre de l'équipe a son propre secret dans son `.env` (jamais commité). `npm test` n'en a pas besoin : il utilise un secret de test.
+
+## Lancer l'API
+
+```sh
+npm run dev
+```
+
+Puis ouvrir http://localhost:3000 (documentation de l'API).
+
 ## Organisation
 
 - [`docs/INTENTION.md`](docs/INTENTION.md) — document d'intention (domaine, endpoints, rôles)

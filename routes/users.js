@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import express from 'express';
 
 import { createHttpError } from '../lib/errors.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, loadCurrentUser } from '../middleware/auth.js';
 import User from '../models/user.js';
 
 const router = express.Router();
@@ -69,17 +69,6 @@ function checkPassword(password) {
       `Password must be a string of at least ${passwordMinLength} characters`,
     );
   }
-}
-
-// Charge l'utilisateur connecté dans req.user (404 s'il n'existe plus)
-async function loadCurrentUser(req, res, next) {
-  const user = await User.findById(req.currentUserId);
-  if (!user) {
-    throw createHttpError(404, 'User not found');
-  }
-
-  req.user = user;
-  next();
 }
 
 export default router;

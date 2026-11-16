@@ -69,7 +69,7 @@ Calculées par l'API (agrégation MongoDB) à partir de la collection `resultats
 
 Chaque document a un `_id` (ObjectId) généré par MongoDB. Les références contiennent l'`_id` du document visé ; MongoDB ne les vérifie pas, c'est l'API qui doit valider que les ressources liées existent.
 
-**Noms dans le code** (en anglais) : `hotes` → `hosts` (`nb_rooms_creees` → `roomsCreated`), `rooms.hote` → `host`, `statut` → `status`, `parametres` → `settings` (`nb_joueurs_max` → `maxPlayers` de 2 à 8, `nb_manches` → `rounds` de 1 à 10, `duree_tour_sec` → `turnDuration` de 30 à 180 s).
+**Noms dans le code** (en anglais) : `hotes` → `hosts` (`nb_rooms_creees` → `roomsCreated`), `rooms.hote` → `host`, `statut` → `status`, `parametres` → `settings` (`nb_joueurs_max` → `maxPlayers` de 2 à 8, `nb_manches` → `rounds` de 1 à 10, `duree_tour_sec` → `turnDuration` de 30 à 180 s), `participants.exclu` → `excluded`, `participants.joined_at` → `joinedAt`.
 
 ### Vue d'ensemble
 
@@ -243,12 +243,12 @@ Légende de la colonne Auth :
 
 ### Rooms
 
-| Méthode | URL                     | Description                                                             | Auth                                              |
-| ------- | ----------------------- | ----------------------------------------------------------------------- | ------------------------------------------------- |
-| `POST`  | `/rooms`                | Créer une room (code généré, paramètres par défaut, l'hôte y participe) | Compte                                            |
-| `GET`   | `/rooms/:code`          | Voir une room (statut, paramètres)                                      | Compte (Joueur quand les participants existeront) |
-| `PATCH` | `/rooms/:code/settings` | Modifier les paramètres (seulement avant le début)                      | Hôte                                              |
-| `PATCH` | `/rooms/:code`          | Lancer la partie (`statut` → `playing`)                                 | Hôte                                              |
+| Méthode | URL                     | Description                                                             | Auth   |
+| ------- | ----------------------- | ----------------------------------------------------------------------- | ------ |
+| `POST`  | `/rooms`                | Créer une room (code généré, paramètres par défaut, l'hôte y participe) | Compte |
+| `GET`   | `/rooms/:code`          | Voir une room (statut, paramètres)                                      | Joueur |
+| `PATCH` | `/rooms/:code/settings` | Modifier les paramètres (seulement avant le début)                      | Hôte   |
+| `PATCH` | `/rooms/:code`          | Lancer la partie (`statut` → `playing`)                                 | Hôte   |
 
 ### Participants
 

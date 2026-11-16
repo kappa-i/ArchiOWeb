@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 
 import { databaseUrl, jwtSecret } from '../config.js';
 import Host from '../models/host.js';
+import Participant from '../models/participant.js';
 import Room from '../models/room.js';
 import Settings from '../models/settings.js';
 import User from '../models/user.js';
@@ -28,6 +29,7 @@ export async function cleanUpDatabase() {
   await Host.deleteMany();
   await Room.deleteMany();
   await Settings.deleteMany();
+  await Participant.deleteMany();
 }
 
 // Crée un utilisateur en base, avec des valeurs par défaut pour les champs non donnés
@@ -63,11 +65,19 @@ export function generateToken(user) {
   return jwt.sign({ sub: user.id }, jwtSecret, { expiresIn: '1h' });
 }
 
-// Crée une room en base dont cet utilisateur est l'hôte, avec les paramètres par défaut
+// Crée une room en base dont cet utilisateur est l'hôte (et le premier joueur), avec les paramètres par défaut
 export async function createRoom(user, code = 'ABC123') {
   const host = await Host.create({ user: user.id, roomsCreated: 1 });
   const room = await Room.create({ code: code, host: host.id });
   await Settings.create({ room: room.id });
+  await Participant.create({ room: room.id, user: user.id });
 
   return room;
+}
+
+// Ajoute cet utilisateur comme joueur de la room
+export async function addParticipant(room, user) {
+  const participant = await Participant.create({ room: room.id, user: user.id });
+
+  return participant;
 }

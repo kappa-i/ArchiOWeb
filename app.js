@@ -5,6 +5,7 @@ import * as config from './config.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 import authRoutes from './routes/auth.js';
 import docsRoutes from './routes/docs.js';
+import participantsRoutes from './routes/participants.js';
 import roomsRoutes from './routes/rooms.js';
 import usersRoutes from './routes/users.js';
 
@@ -21,6 +22,7 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/users', usersRoutes);
 app.use('/rooms', roomsRoutes);
+app.use('/rooms/:code/participants', participantsRoutes);
 
 // Documentation (Swagger)
 app.use('/api-docs', docsRoutes);

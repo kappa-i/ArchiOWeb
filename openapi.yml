@@ -23,6 +23,8 @@ tags:
     description: User accounts
   - name: rooms
     description: Game rooms
+  - name: participants
+    description: Players of a room
 
 paths:
   /auth/login:
@@ -148,7 +150,7 @@ paths:
     post:
       summary: Create a room.
       description: >-
-        The authenticated user becomes the host of the room.
+        The authenticated user becomes the host of the room, and its first player.
         A unique 6-character code is generated, and the settings get their default values.
       tags:
         - rooms
@@ -172,6 +174,7 @@ paths:
   /rooms/{code}:
     get:
       summary: Get a room.
+      description: Only the players of the room can see it.
       tags:
         - rooms
       security:
@@ -187,6 +190,8 @@ paths:
                 $ref: '#/components/schemas/Room'
         401:
           $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/NotAPlayer'
         404:
           $ref: '#/components/responses/RoomNotFound'
 
@@ -232,6 +237,158 @@ paths:
         422:
           $ref: '#/components/responses/ValidationError'
 
+  /rooms/{code}/participants:
+    post:
+      summary: Join a room.
+      description: >-
+        The authenticated user joins the room with its code.
+        It is only possible before the game has started, if the room is not full,
+        and if the user was not excluded from this room.
+      tags:
+        - participants
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+      responses:
+        201:
+          description: The user joined the room.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Participant'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          description: The user was excluded from this room by the host.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: You were excluded from this room
+        404:
+          description: No room has this code, or the user of the token no longer exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: Room not found
+        409:
+          description: >-
+            The user is already in the room, the game has already started, or the room is full.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: The room is full
+    get:
+      summary: List the players of a room.
+      description: >-
+        Players are sorted by arrival (the first one is the earliest).
+        Excluded players are not listed. Only the players of the room can see the list.
+      tags:
+        - participants
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+      responses:
+        200:
+          description: The players of the room.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Participant'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/NotAPlayer'
+        404:
+          $ref: '#/components/responses/RoomNotFound'
+
+  /rooms/{code}/participants/{id}:
+    patch:
+      summary: Exclude a player.
+      description: >-
+        Only the host can do it. An excluded player cannot join the room again.
+        The host cannot exclude themselves.
+      tags:
+        - participants
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+        - $ref: '#/components/parameters/ParticipantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipantExclude'
+      responses:
+        200:
+          description: The excluded player.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Participant'
+        400:
+          description: 'The body is not `{ "excluded": true }`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: 'The body must be { "excluded": true }'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          description: The user is not the host, or the host tries to exclude themselves.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: Only the host of the room can do this
+        404:
+          $ref: '#/components/responses/ParticipantNotFound'
+    delete:
+      summary: Leave a room.
+      description: >-
+        A player can only remove themselves.
+        If the host leaves, the player who arrived the earliest becomes the new host.
+        If the last player leaves, the room is deleted with its settings.
+      tags:
+        - participants
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+        - $ref: '#/components/parameters/ParticipantId'
+      responses:
+        204:
+          description: The player left the room.
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          description: The participant is not the authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: You can only remove yourself from a room
+        404:
+          $ref: '#/components/responses/ParticipantNotFound'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -248,6 +405,14 @@ components:
       schema:
         type: string
         example: K7PX2M
+    ParticipantId:
+      name: id
+      in: path
+      required: true
+      description: ID of the participant (not the ID of the user).
+      schema:
+        type: string
+        example: 66b9d6c2f1a2b3c4d5e6f7b0
 
   headers:
     Location:
@@ -365,6 +530,47 @@ components:
           type: integer
           minimum: 30
           maximum: 180
+
+    Participant:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID of the participant.
+          example: 66b9d6c2f1a2b3c4d5e6f7b0
+        userId:
+          type: string
+          example: 66b9d6c2f1a2b3c4d5e6f7a8
+        username:
+          type: string
+          example: jdoe
+        score:
+          type: integer
+          default: 0
+        excluded:
+          type: boolean
+          description: true if the host excluded this player.
+          default: false
+        joinedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - username
+        - score
+        - excluded
+        - joinedAt
+
+    ParticipantExclude:
+      type: object
+      properties:
+        excluded:
+          type: boolean
+          enum:
+            - true
+      required:
+        - excluded
 
     UserCreate:
       type: object
@@ -490,6 +696,22 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             message: Room not found
+    ParticipantNotFound:
+      description: No room has this code, or this room has no player with this ID.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Participant not found
+    NotAPlayer:
+      description: The authenticated user is not a player of this room.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Only the players of the room can do this
 
     Conflict:
       description: The username or the email is already used.

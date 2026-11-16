@@ -3,6 +3,7 @@ import supertest from 'supertest';
 import app from '../app.js';
 import Room from '../models/room.js';
 import {
+  addParticipant,
   cleanUpDatabase,
   connectToDatabase,
   createRoom,
@@ -145,6 +146,86 @@ describe('PATCH /rooms/:code/settings', () => {
       .patch('/rooms/ABC123/settings')
       .set('Authorization', `Bearer ${token}`)
       .send({ rounds: 5 });
+
+    expect(res.status).toBe(409);
+  });
+});
+
+describe('PATCH /rooms/:code', () => {
+  // L'hôte lance la partie avec 2 joueurs : le statut passe à « playing »
+  it('should start the game', async () => {
+    const host = await createUser({ username: 'host', email: 'host@example.com' });
+    const player = await createUser({ username: 'player', email: 'player@example.com' });
+    const token = generateToken(host);
+    const room = await createRoom(host, 'ABC123');
+    await addParticipant(room, player);
+
+    const res = await supertest(app)
+      .patch('/rooms/ABC123')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'playing' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('playing');
+  });
+
+  // Un joueur qui n'est pas l'hôte : interdit
+  it('should respond with 403 if the user is not the host', async () => {
+    const host = await createUser({ username: 'host', email: 'host@example.com' });
+    const player = await createUser({ username: 'player', email: 'player@example.com' });
+    const token = generateToken(player);
+    const room = await createRoom(host, 'ABC123');
+    await addParticipant(room, player);
+
+    const res = await supertest(app)
+      .patch('/rooms/ABC123')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'playing' });
+
+    expect(res.status).toBe(403);
+  });
+
+  // Body incorrect : refusé
+  it('should respond with 400 if the body is not { status: "playing" }', async () => {
+    const user = await createUser();
+    const token = generateToken(user);
+    await createRoom(user, 'ABC123');
+
+    const res = await supertest(app)
+      .patch('/rooms/ABC123')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'finished' });
+
+    expect(res.status).toBe(400);
+  });
+
+  // L'hôte est seul dans la room : pas assez de joueurs
+  it('should respond with 409 if there is only one player', async () => {
+    const user = await createUser();
+    const token = generateToken(user);
+    await createRoom(user, 'ABC123');
+
+    const res = await supertest(app)
+      .patch('/rooms/ABC123')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'playing' });
+
+    expect(res.status).toBe(409);
+  });
+
+  // Partie déjà lancée : on ne peut pas la relancer
+  it('should respond with 409 if the game has already started', async () => {
+    const host = await createUser({ username: 'host', email: 'host@example.com' });
+    const player = await createUser({ username: 'player', email: 'player@example.com' });
+    const token = generateToken(host);
+    const room = await createRoom(host, 'ABC123');
+    await addParticipant(room, player);
+    await Room.updateOne({ _id: room.id }, { status: 'playing' });
+
+    const res = await supertest(app)
+      .patch('/rooms/ABC123')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'playing' });
 
     expect(res.status).toBe(409);
   });

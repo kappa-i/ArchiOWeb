@@ -194,6 +194,52 @@ paths:
           $ref: '#/components/responses/NotAPlayer'
         404:
           $ref: '#/components/responses/RoomNotFound'
+    patch:
+      summary: Start the game.
+      description: >-
+        Only the host can do it. The status goes from `waiting` to `playing`.
+        At least 2 players (not excluded) are needed.
+      tags:
+        - rooms
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomStart'
+      responses:
+        200:
+          description: The room, with its new status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        400:
+          description: 'The body is not `{ "status": "playing" }`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: 'The body must be { "status": "playing" }'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/RoomNotFound'
+        409:
+          description: The game has already started, or there are less than 2 players.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: At least 2 players are needed to start the game
 
   /rooms/{code}/settings:
     patch:
@@ -561,6 +607,16 @@ components:
         - score
         - excluded
         - joinedAt
+
+    RoomStart:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - playing
+      required:
+        - status
 
     ParticipantExclude:
       type: object

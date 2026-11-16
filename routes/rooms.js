@@ -80,6 +80,33 @@ router.patch(
   },
 );
 
+// Lancer la partie (seulement l'hôte) : le statut passe de « waiting » à « playing »
+router.patch('/:code', authenticate, loadRoomFromParams, requireRoomHost, async (req, res) => {
+  const body = req.body || {};
+
+  if (body.status !== 'playing') {
+    throw createHttpError(400, 'The body must be { "status": "playing" }');
+  }
+
+  if (req.room.status !== 'waiting') {
+    throw createHttpError(409, 'The game has already started');
+  }
+
+  const playersCount = await Participant.countDocuments({ room: req.room.id, excluded: false });
+
+  if (playersCount < 2) {
+    throw createHttpError(409, 'At least 2 players are needed to start the game');
+  }
+
+  req.room.status = 'playing';
+  await req.room.save();
+
+  const host = await Host.findById(req.room.host);
+  const settings = await Settings.findOne({ room: req.room.id });
+
+  res.send(formatRoom(req.room, host, settings));
+});
+
 // Génère un code de 6 caractères qui n'est pas encore utilisé (ex. « K7PX2M »)
 async function generateUniqueCode() {
   // Sans 0, O, 1 et I, pour éviter les confusions en lisant le code

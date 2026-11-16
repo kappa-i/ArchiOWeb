@@ -2,8 +2,9 @@ import express from 'express';
 
 import { createHttpError } from '../lib/errors.js';
 import { authenticate, loadCurrentUser } from '../middleware/auth.js';
-import { loadRoomFromParams, requireRoomHost } from '../middleware/rooms.js';
+import { loadRoomFromParams, requireRoomHost, requireRoomPlayer } from '../middleware/rooms.js';
 import Host from '../models/host.js';
+import Participant from '../models/participant.js';
 import Room from '../models/room.js';
 import Settings from '../models/settings.js';
 
@@ -28,14 +29,17 @@ router.post('/', authenticate, loadCurrentUser, async (req, res) => {
 
   const settings = await Settings.create({ room: room.id });
 
+  // L'hôte joue aussi : il devient le premier participant de sa room
+  await Participant.create({ room: room.id, user: req.user.id });
+
   res
     .status(201)
     .set('Location', `/rooms/${room.code}`)
     .send(formatRoom(room, host, settings));
 });
 
-// Voir une room (statut et paramètres)
-router.get('/:code', authenticate, loadRoomFromParams, async (req, res) => {
+// Voir une room (statut et paramètres), seulement pour ses joueurs
+router.get('/:code', authenticate, loadRoomFromParams, requireRoomPlayer, async (req, res) => {
   const host = await Host.findById(req.room.host);
   const settings = await Settings.findOne({ room: req.room.id });
 

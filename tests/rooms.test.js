@@ -69,6 +69,18 @@ describe('GET /rooms/:code', () => {
     expect(res.status).toBe(404);
   });
 
+  // Utilisateur qui ne joue pas dans la room : interdit
+  it('should respond with 403 if the user is not a player of the room', async () => {
+    const host = await createUser({ username: 'host', email: 'host@example.com' });
+    const otherUser = await createUser({ username: 'other', email: 'other@example.com' });
+    const token = generateToken(otherUser);
+    await createRoom(host, 'ABC123');
+
+    const res = await supertest(app).get('/rooms/ABC123').set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+  });
+
   // Pas de jeton : l'utilisateur n'est pas connecté
   it('should respond with 401 without a token', async () => {
     const res = await supertest(app).get('/rooms/ABC123');

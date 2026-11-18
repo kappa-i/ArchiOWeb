@@ -802,16 +802,9 @@ function toast(text) {
   });
 }
 
-// La mascotte flotte et cligne des yeux
+// Le logo flotte doucement, les taches du fond bougent
 if (canAnimate) {
-  gsap.to('.brand .mascot', { y: -4, duration: 1.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-  gsap.timeline({ repeat: -1, repeatDelay: 3.2 }).to('.brand .mascot-eyes', {
-    scaleY: 0.1,
-    transformOrigin: '50% 50%',
-    duration: 0.08,
-    yoyo: true,
-    repeat: 1,
-  });
+  gsap.to('.brand .logo', { y: -4, duration: 1.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
   gsap.to('.blob', {
     x: 'random(-80, 80)',
     y: 'random(-60, 60)',

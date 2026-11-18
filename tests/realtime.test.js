@@ -2,7 +2,7 @@ import http from 'http';
 import WebSocket from 'ws';
 
 import { jwtSecret } from '../config.js';
-import { attachRealtime } from '../lib/realtime.js';
+import { attachRealtime, canDraw, setCurrentRound } from '../lib/realtime.js';
 import {
   cleanUpDatabase,
   connectToDatabase,
@@ -166,6 +166,39 @@ describe('WebSocket /ws with accounts', () => {
     const closeCode = await waitForClose(`${apiUrl}?room=NOROOM&token=${generateToken(user)}`);
 
     expect(closeCode).toBe(1008);
+  });
+});
+
+describe('Turns', () => {
+  // Pendant un tour, seul le dessinateur peut dessiner
+  it('should only let the drawer draw during a turn', () => {
+    setCurrentRound('ROOM20', { drawerId: 'drawer-id', word: 'chat', endsAt: 0, message: null });
+
+    expect(canDraw('ROOM20', 'drawer-id')).toBe(true);
+    expect(canDraw('ROOM20', 'someone-else')).toBe(false);
+
+    setCurrentRound('ROOM20', null);
+  });
+
+  // Le dessinateur arrive pendant son tour : il reçoit le tour en cours et son mot
+  it('should send the current turn to a player who joins during the turn', async () => {
+    const user = await createUser();
+    await createRoom(user, 'ROOM21');
+    setCurrentRound('ROOM21', {
+      drawerId: user.id,
+      word: 'chat',
+      endsAt: Date.now() + 60000,
+      message: { type: 'round-started', drawer: 'jdoe', duration: 60 },
+    });
+
+    const socket = await openSocket(`${apiUrl}?room=ROOM21&token=${generateToken(user)}`);
+
+    const round = await waitForMessage(socket, 'round-started');
+    const word = await waitForMessage(socket, 'word-to-draw');
+    expect(round.drawer).toBe('jdoe');
+    expect(word.word).toBe('chat');
+
+    setCurrentRound('ROOM21', null);
   });
 });
 

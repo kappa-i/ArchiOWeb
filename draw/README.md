@@ -33,9 +33,9 @@ Puis ouvrir http://localhost:3000/play/lobby.html :
 1. Se connecter ou créer un compte. Le compte est gardé **par onglet** : un 2e onglet peut se connecter avec un autre compte et jouer un 2e joueur.
 2. Créer une room (on en devient l'hôte) ou rejoindre celle d'un ami avec son code. Le lien 🔗 envoie directement sur la page avec le code déjà rempli.
 3. Dans la salle d'attente : la liste des joueurs se met à jour toutes les 2 secondes. L'hôte change les réglages, exclut un joueur (deux clics sur la croix) et lance la partie à partir de 2 joueurs.
-4. Partie lancée : compte à rebours chez tout le monde, puis direction l'écran de dessin de la room (`/play/`), connecté avec le compte de la salle d'attente.
+4. Partie lancée : compte à rebours chez tout le monde, puis direction l'écran de dessin de la room (`/play/`), connecté avec le compte de la salle d'attente. Le serveur fait jouer les tours (voir « Déroulement d'une partie ») ; à la fin, un écran de classement propose de revenir au menu.
 
-Endpoints utilisés : `POST /users`, `POST /auth/login`, `GET /users/me`, `POST /rooms`, `GET /rooms/:code`, `PATCH /rooms/:code/settings`, `PATCH /rooms/:code`, `POST`, `GET`, `PATCH` et `DELETE /rooms/:code/participants`.
+Endpoints utilisés : `POST /users`, `POST /auth/login`, `GET /users/me`, `POST /rooms`, `GET /rooms/:code`, `PATCH /rooms/:code/settings`, `PATCH /rooms/:code`, `POST`, `GET`, `PATCH` et `DELETE /rooms/:code/participants`, `POST /rooms/:code/drawings/:id/guesses`.
 
 ## Fichiers
 
@@ -49,6 +49,8 @@ Endpoints utilisés : `POST /users`, `POST /auth/login`, `GET /users/me`, `POST 
 | `lobby.html`         | La salle d'attente : connexion, créer / rejoindre une room, joueurs, réglages, lancer        |
 | `lobby.js`           | Salle d'attente : appels à l'API, rafraîchissement toutes les 2 secondes, compte à rebours   |
 | `lobby.css`          | Style propre à la salle d'attente (le reste vient de `style.css`)                            |
+| `logo.svg`           | Le logo de Devin'Art (aussi l'icône de l'onglet)                                             |
+| `../lib/game.js`     | La partie côté serveur : tours, mot tiré, propositions, points, résultats                    |
 | `../lib/realtime.js` | Serveur temps réel : relaie les messages aux joueurs de la même room                         |
 | `../bin/start.js`    | L'API : branche le temps réel avec comptes (`attachRealtime(server, config.jwtSecret)`)      |
 | `../bin/draw.js`     | Petit serveur de test : sert cette page + le temps réel sans compte (`npm run draw`)         |
@@ -85,19 +87,26 @@ Les opérations (`op.kind`) :
 
 ### Envoyés par le serveur
 
-| Message    | Contenu                                  | Quand                                                          |
-| ---------- | ---------------------------------------- | -------------------------------------------------------------- |
-| `history`  | `messages` : tous les messages du dessin | En arrivant dans la room (ou dessin effacé par `resetDrawing`) |
-| `presence` | `players` : noms des joueurs connectés   | Quelqu'un arrive ou part                                       |
+| Message         | Contenu                                                                                           | À qui                    | Quand                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------ |
+| `history`       | `messages` : tous les messages du dessin                                                          | Le joueur qui arrive     | En arrivant dans la room, et au début de chaque tour         |
+| `presence`      | `players` : pseudos des joueurs connectés                                                         | Toute la room            | Quelqu'un arrive ou part                                     |
+| `round-started` | `drawingId`, `drawer` (pseudo), `round`, `totalRounds`, `duration` (secondes), `hint` (`____-__`) | Toute la room            | Début d'un tour (aussi au joueur qui arrive pendant le tour) |
+| `word-to-draw`  | `word`                                                                                            | Le dessinateur seulement | Début de son tour                                            |
+| `guess`         | `player`, `text`                                                                                  | Toute la room            | Une proposition fausse (affichée dans le chat)               |
+| `word-found`    | `player`, `points` (sans le mot)                                                                  | Toute la room            | Un joueur a trouvé                                           |
+| `round-ended`   | `word`, `scores` : `[{ username, score }]` du meilleur au moins bon                               | Toute la room            | Temps écoulé ou tout le monde a trouvé                       |
+| `game-ended`    | `ranking` : `[{ rank, username, score }]`                                                         | Toute la room            | Fin de la partie (la room est ensuite supprimée)             |
+| `game-error`    | —                                                                                                 | Toute la room            | La partie s'est arrêtée à cause d'une erreur                 |
 
-La page sait déjà réagir à `round-started` (`duration`, `drawer`), `word-to-draw` (`word`) et `round-ended` (`word`) de `docs/INTENTION.md` : la démo locale s'arrête dès que le serveur les envoie.
+## Déroulement d'une partie (`lib/game.js`)
 
-## Logique des tours (à faire)
+1. L'hôte lance la partie (`PATCH /rooms/:code`). 5 secondes plus tard, le premier tour commence.
+2. **Une manche = chaque joueur dessine une fois**, dans l'ordre d'arrivée. Nombre de manches et durée d'un tour = réglages de la room.
+3. À chaque tour, un mot est tiré au hasard dans la base (jamais deux fois le même dans la partie). **Il faut avoir chargé les mots** : `npm run seed:words`. Seul le dessinateur peut dessiner (`canDraw()` dans `lib/realtime.js`).
+4. Les autres proposent des mots avec **`POST /rooms/:code/drawings/:id/guesses`** (documenté dans `openapi.yml`). Majuscules, accents et espaces autour ne comptent pas.
+5. Points : celui qui trouve gagne `50 + 100 × temps restant / durée du tour` (entre 50 et 150), le dessinateur gagne 25 par joueur qui trouve.
+6. Le tour se termine quand le temps est écoulé ou que tout le monde a trouvé : le dessin est enregistré (`Drawing.data`), le mot est révélé, pause de 4 secondes, tour suivant.
+7. Fin de partie : un résultat par joueur (`Result`, utilisé par `GET /users/:id/stats`), le classement est envoyé, puis la room et tout son contenu sont supprimés.
 
-Le temps réel est branché sur l'API et vérifie les comptes. Il reste :
-
-1. Dans `lib/realtime.js` : `canDraw()` répond `true` seulement pour le dessinateur du tour (pour l'instant, tous les joueurs de la room peuvent dessiner).
-2. La logique des tours utilise les fonctions de `lib/realtime.js` :
-   - `broadcast(code, message)` pour envoyer `round-started`, `word-found`… ;
-   - `resetDrawing(code)` au début d'un tour ;
-   - `getDrawing(code)` à la fin du tour, pour enregistrer le dessin.
+S'il reste moins de 2 joueurs, la partie se termine. Si tout le monde est parti (room supprimée), elle s'arrête.

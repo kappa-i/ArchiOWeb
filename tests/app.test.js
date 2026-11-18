@@ -20,6 +20,16 @@ describe('GET /api-docs/', () => {
   });
 });
 
+describe('GET /play/lobby.html', () => {
+  // La page de la salle d'attente est servie par l'API
+  it('should serve the waiting room page', async () => {
+    const res = await supertest(app).get('/play/lobby.html');
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/html');
+  });
+});
+
 describe('GET /unknown', () => {
   it('should respond with 404 Not Found', async () => {
     const res = await supertest(app).get('/unknown');

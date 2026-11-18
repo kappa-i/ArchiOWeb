@@ -1151,13 +1151,15 @@ function initials(name) {
   return result;
 }
 
-// Toujours la même couleur pour le même nom
+// Toujours la même couleur pour le même nom (même calcul que dans lobby.js).
+// Le « × 137 » éloigne les couleurs de deux noms presque pareils (ex. Testeur1 et Testeur2).
 function colorFromName(name) {
   let hash = 0;
   for (const character of name) {
     hash = (hash * 31 + character.charCodeAt(0)) % 360;
   }
-  return `hsl(${hash} 70% 62%)`;
+  const hue = (hash * 137) % 360;
+  return `hsl(${hue} 70% 62%)`;
 }
 
 function clamp(value, min, max) {

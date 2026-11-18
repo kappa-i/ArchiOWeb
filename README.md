@@ -65,6 +65,10 @@ npm run draw
 
 Puis ouvrir http://localhost:3001 dans 2 onglets : ce qu'on dessine dans l'un apparaît dans l'autre. Détails dans [`draw/README.md`](draw/README.md).
 
+## Tester la salle d'attente
+
+La salle d'attente utilise la vraie API. Lancer `npm run dev` (et `npm run draw` pour l'écran de dessin qui suit), puis ouvrir http://localhost:3000/play/lobby.html dans 2 onglets, avec un compte différent dans chacun. Détails dans [`draw/README.md`](draw/README.md).
+
 ## Organisation
 
 - [`docs/INTENTION.md`](docs/INTENTION.md) — document d'intention (domaine, endpoints, rôles)

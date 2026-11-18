@@ -17,6 +17,24 @@ Puis ouvrir http://localhost:3001 dans **2 onglets** : ce qu'on dessine dans l'u
 
 Raccourcis : `B` pinceau, `E` gomme, `F` remplir, `S` formes, `1`–`4` tailles, `Ctrl/Cmd+Z` annuler, `Ctrl/Cmd+Y` rétablir, `Maj` pour un carré / cercle parfait.
 
+## Salle d'attente
+
+Contrairement au dessin, la salle d'attente utilise la **vraie API** (comptes, rooms, participants). Elle est servie par l'API elle-même sur `/play/lobby.html`, ce qui évite les problèmes de CORS.
+
+```sh
+npm run dev    # l'API (il faut MongoDB)
+npm run draw   # l'écran de dessin, où l'on arrive quand la partie est lancée
+```
+
+Puis ouvrir http://localhost:3000/play/lobby.html :
+
+1. Se connecter ou créer un compte. Le compte est gardé **par onglet** : un 2e onglet peut se connecter avec un autre compte et jouer un 2e joueur.
+2. Créer une room (on en devient l'hôte) ou rejoindre celle d'un ami avec son code. Le lien 🔗 envoie directement sur la page avec le code déjà rempli.
+3. Dans la salle d'attente : la liste des joueurs se met à jour toutes les 2 secondes. L'hôte change les réglages, exclut un joueur (deux clics sur la croix) et lance la partie à partir de 2 joueurs.
+4. Partie lancée : compte à rebours chez tout le monde, puis direction l'écran de dessin de la room (port 3001).
+
+Endpoints utilisés : `POST /users`, `POST /auth/login`, `GET /users/me`, `POST /rooms`, `GET /rooms/:code`, `PATCH /rooms/:code/settings`, `PATCH /rooms/:code`, `POST`, `GET`, `PATCH` et `DELETE /rooms/:code/participants`.
+
 ## Fichiers
 
 | Fichier              | Rôle                                                                                         |
@@ -26,6 +44,9 @@ Raccourcis : `B` pinceau, `E` gomme, `F` remplir, `S` formes, `1`–`4` tailles,
 | `app.js`             | Interface : outils, pointeur (souris, doigt, stylet), barre du haut, animations GSAP         |
 | `index.html`         | La page                                                                                      |
 | `style.css`          | Le style (responsive : ordinateur, tablette, téléphone en portrait et en paysage)            |
+| `lobby.html`         | La salle d'attente : connexion, créer / rejoindre une room, joueurs, réglages, lancer        |
+| `lobby.js`           | Salle d'attente : appels à l'API, rafraîchissement toutes les 2 secondes, compte à rebours   |
+| `lobby.css`          | Style propre à la salle d'attente (le reste vient de `style.css`)                            |
 | `../lib/realtime.js` | Serveur temps réel : relaie les messages aux joueurs de la même room                         |
 | `../bin/draw.js`     | Petit serveur de test : sert cette page + le temps réel (`npm run draw`)                     |
 

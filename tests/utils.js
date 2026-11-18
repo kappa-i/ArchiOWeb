@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import { databaseUrl, jwtSecret } from '../config.js';
 import Host from '../models/host.js';
 import Participant from '../models/participant.js';
+import Result from '../models/result.js';
 import Room from '../models/room.js';
 import Settings from '../models/settings.js';
 import User from '../models/user.js';
@@ -30,6 +31,7 @@ export async function cleanUpDatabase() {
   await Room.deleteMany();
   await Settings.deleteMany();
   await Participant.deleteMany();
+  await Result.deleteMany();
 }
 
 // Crée un utilisateur en base, avec des valeurs par défaut pour les champs non donnés
@@ -80,4 +82,21 @@ export async function addParticipant(room, user) {
   const participant = await Participant.create({ room: room.id, user: user.id });
 
   return participant;
+}
+
+// Enregistre le résultat d'une partie terminée pour cet utilisateur
+export async function createResult(user, data) {
+  const result = await Result.create({
+    user: user.id,
+    score: data.score,
+    rank: data.rank,
+    wordsFound: data.wordsFound,
+    firstFinds: data.firstFinds,
+    totalFindTime: data.totalFindTime,
+    successfulDrawings: data.successfulDrawings,
+    drawingPoints: data.drawingPoints,
+    date: data.date,
+  });
+
+  return result;
 }

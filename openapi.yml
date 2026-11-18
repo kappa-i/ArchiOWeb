@@ -140,11 +140,37 @@ paths:
         - bearerAuth: []
       responses:
         204:
-          description: The user was deleted.
+          description: The user was deleted, with the results of their games.
         401:
           $ref: '#/components/responses/Unauthorized'
         404:
           $ref: '#/components/responses/UserNotFound'
+
+  /users/{id}/stats:
+    get:
+      summary: Get the stats of a player.
+      description: >-
+        Computed with a MongoDB aggregation on the results of the games the player finished.
+        A player who has not finished any game gets stats at zero.
+      tags:
+        - users
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        200:
+          description: The stats of the player.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStats'
+        404:
+          description: No user has this ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: User not found
 
   /rooms:
     post:
@@ -443,6 +469,14 @@ components:
       bearerFormat: JWT
 
   parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      description: ID of the user.
+      schema:
+        type: string
+        example: 66b9d6c2f1a2b3c4d5e6f7a8
     RoomCode:
       name: code
       in: path
@@ -498,6 +532,92 @@ components:
         - email
         - createdAt
         - updatedAt
+
+    UserStats:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: 66b9d6c2f1a2b3c4d5e6f7a8
+        username:
+          type: string
+          example: jdoe
+        player:
+          type: object
+          properties:
+            gamesPlayed:
+              type: integer
+              example: 2
+            wins:
+              type: integer
+              description: Games finished at rank 1.
+              example: 1
+            winRate:
+              type: integer
+              description: Percentage of games won (0 to 100, rounded).
+              example: 50
+            bestScore:
+              type: integer
+              example: 300
+            averageScore:
+              type: integer
+              description: Rounded.
+              example: 200
+            totalPoints:
+              type: integer
+              example: 400
+            lastGame:
+              type:
+                - string
+                - 'null'
+              format: date-time
+              description: End date of the last game, null if no game was played.
+          required:
+            - gamesPlayed
+            - wins
+            - winRate
+            - bestScore
+            - averageScore
+            - totalPoints
+            - lastGame
+        guesser:
+          type: object
+          properties:
+            wordsFound:
+              type: integer
+              example: 4
+            firstFinds:
+              type: integer
+              description: Times the player found the word first.
+              example: 2
+            averageFindTime:
+              type: integer
+              description: Average time to find a word, in seconds (rounded).
+              example: 20
+          required:
+            - wordsFound
+            - firstFinds
+            - averageFindTime
+        drawer:
+          type: object
+          properties:
+            successfulDrawings:
+              type: integer
+              description: Drawings found by at least one player.
+              example: 2
+            drawingPoints:
+              type: integer
+              description: Points earned while drawing.
+              example: 80
+          required:
+            - successfulDrawings
+            - drawingPoints
+      required:
+        - userId
+        - username
+        - player
+        - guesser
+        - drawer
 
     Room:
       type: object

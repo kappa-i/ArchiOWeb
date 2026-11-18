@@ -13,6 +13,8 @@ info:
   version: 0.1.0
 
 servers:
+  - url: https://devinart-8z4w.onrender.com
+    description: Production server (Render)
   - url: http://localhost:3000
     description: Local development server
 

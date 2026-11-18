@@ -3,9 +3,10 @@
 API REST (Express 5 + MongoDB 8) du projet ArchiOWeb — COMEM+, HEIG-VD 2026-2027.
 
 - Consigne : https://github.com/mediacomem/comem-archioweb
-- API déployée : _lien Render à ajouter_
+- API déployée (Render + MongoDB Atlas) : https://devinart-8z4w.onrender.com (documentation)
+- Jouer en ligne : https://devinart-8z4w.onrender.com/play/lobby.html
 
-> Projet en cours de mise en place : aucun code applicatif pour l'instant.
+> Hébergement gratuit : le serveur s'endort après ~15 minutes sans visite, la première visite prend alors ~30 secondes.
 
 ## Prérequis
 

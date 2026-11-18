@@ -6,7 +6,7 @@ Source : https://github.com/mediacomem/comem-archioweb (consigne 2026-2027). Coc
 
 - [ ] Groupe de 3–4 personnes
 - [ ] Repo GitHub public
-- [ ] API déployée sur Render (+ MongoDB Atlas)
+- [x] API déployée sur Render (+ MongoDB Atlas)
 - [ ] E-mail à Simon Oulevay et Loris Gavillet : membres, lien repo, lien API
 
 ## Fonctionnalités

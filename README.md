@@ -37,6 +37,16 @@ L'API signe les jetons de connexion avec un secret. Sans lui, `npm run dev` refu
 
 Chaque membre de l'équipe a son propre secret dans son `.env` (jamais commité). `npm test` n'en a pas besoin : il utilise un secret de test.
 
+## Charger la liste de mots
+
+Les mots à dessiner sont dans [`data/words.js`](data/words.js) (trois difficultés : `easy`, `medium`, `hard`). Pour les enregistrer dans la base :
+
+```sh
+npm run seed:words
+```
+
+On peut relancer la commande sans risque : elle ne crée pas de doublons. Après avoir modifié `data/words.js`, il suffit de la relancer.
+
 ## Lancer l'API
 
 ```sh

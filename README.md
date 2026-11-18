@@ -65,9 +65,9 @@ npm run draw
 
 Puis ouvrir http://localhost:3001 dans 2 onglets : ce qu'on dessine dans l'un apparaît dans l'autre. Détails dans [`draw/README.md`](draw/README.md).
 
-## Tester la salle d'attente
+## Jouer (salle d'attente + dessin)
 
-La salle d'attente utilise la vraie API. Lancer `npm run dev` (et `npm run draw` pour l'écran de dessin qui suit), puis ouvrir http://localhost:3000/play/lobby.html dans 2 onglets, avec un compte différent dans chacun. Détails dans [`draw/README.md`](draw/README.md).
+Tout passe par l'API : lancer `npm run dev`, puis ouvrir http://localhost:3000/play/lobby.html dans 2 onglets, avec un compte différent dans chacun. Quand l'hôte lance la partie, tout le monde arrive sur l'écran de dessin de la room, en temps réel. Détails dans [`draw/README.md`](draw/README.md).
 
 ## Organisation
 

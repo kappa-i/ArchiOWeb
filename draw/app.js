@@ -165,7 +165,17 @@ let network = null;
 
 if (location.protocol === 'http:' || location.protocol === 'https:') {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${protocol}//${location.host}/ws?room=${encodeURIComponent(roomCode)}&name=${encodeURIComponent(myName)}`;
+  let url = `${protocol}//${location.host}/ws?room=${encodeURIComponent(roomCode)}`;
+
+  // Arrivé depuis la salle d'attente : on envoie son jeton de connexion.
+  // Sinon (serveur de test npm run draw) : juste un nom.
+  const token = sessionStorage.getItem('token');
+  if (token) {
+    url = url + `&token=${encodeURIComponent(token)}`;
+  } else {
+    url = url + `&name=${encodeURIComponent(myName)}`;
+  }
+
   network = connect(url, handleServerMessage, showConnectionStatus);
 }
 

@@ -5,8 +5,8 @@
 // Réglages
 // ---------------------------------------------------------------------------
 
-// Écran de dessin (serveur de test lancé avec npm run draw)
-const DRAW_URL = `http://${location.hostname}:3001/`;
+// Écran de dessin, servi par l'API comme cette page
+const DRAW_URL = '/play/';
 
 // Le serveur n'envoie pas encore d'événements en temps réel : on redemande la room toutes les 2 secondes
 const REFRESH_DELAY = 2000;

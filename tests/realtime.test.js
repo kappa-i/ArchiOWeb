@@ -1,19 +1,41 @@
 import http from 'http';
 import WebSocket from 'ws';
 
+import { jwtSecret } from '../config.js';
 import { attachRealtime } from '../lib/realtime.js';
+import {
+  cleanUpDatabase,
+  connectToDatabase,
+  createRoom,
+  createUser,
+  disconnectFromDatabase,
+  generateToken,
+} from './utils.js';
 
-// Petit serveur de test sur un port libre (pas besoin de MongoDB), fermé à la fin
-let server;
-let url;
+// Deux petits serveurs sur des ports libres :
+// - testUrl : comme npm run draw, sans compte (le nom vient de l'URL)
+// - apiUrl : comme l'API, il faut un jeton et jouer dans la room
+let testServer;
+let apiServer;
+let testUrl;
+let apiUrl;
 const sockets = [];
 
 beforeAll(async () => {
-  server = http.createServer();
-  attachRealtime(server);
-  await new Promise((resolve) => server.listen(0, resolve));
-  url = `ws://127.0.0.1:${server.address().port}/ws`;
+  await connectToDatabase();
+
+  testServer = http.createServer();
+  attachRealtime(testServer);
+  await new Promise((resolve) => testServer.listen(0, resolve));
+  testUrl = `ws://127.0.0.1:${testServer.address().port}/ws`;
+
+  apiServer = http.createServer();
+  attachRealtime(apiServer, jwtSecret);
+  await new Promise((resolve) => apiServer.listen(0, resolve));
+  apiUrl = `ws://127.0.0.1:${apiServer.address().port}/ws`;
 });
+
+beforeEach(cleanUpDatabase);
 
 // Déconnecte les joueurs après chaque test
 afterEach(() => {
@@ -24,8 +46,11 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  server.closeAllConnections();
-  await new Promise((resolve) => server.close(resolve));
+  testServer.closeAllConnections();
+  apiServer.closeAllConnections();
+  await new Promise((resolve) => testServer.close(resolve));
+  await new Promise((resolve) => apiServer.close(resolve));
+  await disconnectFromDatabase();
 });
 
 // Le début d'un trait, tel que l'envoie la page de dessin
@@ -95,17 +120,63 @@ describe('WebSocket /ws', () => {
 
   // Sans code de room, le serveur ferme la connexion (code 1008)
   it('should refuse a connection without a room code', async () => {
-    const socket = new WebSocket(url);
-
-    const closeCode = await new Promise((resolve) => socket.on('close', resolve));
+    const closeCode = await waitForClose(testUrl);
 
     expect(closeCode).toBe(1008);
   });
 });
 
-// Connecte un joueur à une room et garde tous les messages qu'il reçoit dans socket.received
+describe('WebSocket /ws with accounts', () => {
+  // Un joueur de la room se connecte avec son jeton : il est dans la liste, avec son pseudo
+  it('should accept a player of the room', async () => {
+    const user = await createUser();
+    await createRoom(user, 'ROOM10');
+
+    const socket = await openSocket(`${apiUrl}?room=ROOM10&token=${generateToken(user)}`);
+
+    const presence = await waitForMessage(socket, 'presence');
+    expect(presence.players).toEqual(['jdoe']);
+  });
+
+  // Sans jeton, la connexion est refusée
+  it('should refuse a connection without a token', async () => {
+    const user = await createUser();
+    await createRoom(user, 'ROOM11');
+
+    const closeCode = await waitForClose(`${apiUrl}?room=ROOM11`);
+
+    expect(closeCode).toBe(1008);
+  });
+
+  // Un utilisateur qui ne joue pas dans la room est refusé
+  it('should refuse a user who is not a player of the room', async () => {
+    const host = await createUser();
+    await createRoom(host, 'ROOM12');
+    const other = await createUser({ username: 'other', email: 'other@example.com' });
+
+    const closeCode = await waitForClose(`${apiUrl}?room=ROOM12&token=${generateToken(other)}`);
+
+    expect(closeCode).toBe(1008);
+  });
+
+  // La room n'existe pas : connexion refusée
+  it('should refuse a room that does not exist', async () => {
+    const user = await createUser();
+
+    const closeCode = await waitForClose(`${apiUrl}?room=NOROOM&token=${generateToken(user)}`);
+
+    expect(closeCode).toBe(1008);
+  });
+});
+
+// Connecte un joueur au serveur de test (sans compte)
 function connectPlayer(room, name) {
-  const socket = new WebSocket(`${url}?room=${room}&name=${name}`);
+  return openSocket(`${testUrl}?room=${room}&name=${name}`);
+}
+
+// Ouvre une connexion et garde tous les messages reçus dans socket.received
+function openSocket(address) {
+  const socket = new WebSocket(address);
   socket.received = [];
   sockets.push(socket);
 
@@ -115,6 +186,15 @@ function connectPlayer(room, name) {
 
   return new Promise((resolve) => {
     socket.on('open', () => resolve(socket));
+  });
+}
+
+// Ouvre une connexion et attend que le serveur la ferme : renvoie le code de fermeture
+function waitForClose(address) {
+  const socket = new WebSocket(address);
+
+  return new Promise((resolve) => {
+    socket.on('close', (code) => resolve(code));
   });
 }
 

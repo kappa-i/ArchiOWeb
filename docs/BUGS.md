@@ -33,5 +33,5 @@ Bugs et incohérences repérés en relisant le code, à corriger plus tard.
 
 ## 6. Documentation pas à jour
 
-- `README.md` dit encore « aucun code applicatif pour l'instant » et parle de MongoDB 8 alors que la CI utilise la 7.0.
-- `docs/REQUIREMENTS.md` : rien n'est coché alors qu'une partie est faite (inscription, authentification, validation…).
+- `README.md` parle de MongoDB 8 alors que la CI utilise la 7.0.
+- `docs/REQUIREMENTS.md` : presque rien n'est coché alors qu'une partie est faite (inscription, authentification, validation…).

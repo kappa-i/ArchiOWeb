@@ -55,6 +55,16 @@ npm run dev
 
 Puis ouvrir http://localhost:3000 (documentation de l'API).
 
+## Tester le module de dessin
+
+Le dessin en temps réel se teste sans MongoDB ni compte :
+
+```sh
+npm run draw
+```
+
+Puis ouvrir http://localhost:3001 dans 2 onglets : ce qu'on dessine dans l'un apparaît dans l'autre. Détails dans [`draw/README.md`](draw/README.md).
+
 ## Organisation
 
 - [`docs/INTENTION.md`](docs/INTENTION.md) — document d'intention (domaine, endpoints, rôles)

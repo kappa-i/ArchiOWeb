@@ -10,6 +10,7 @@
   },
   "scripts": {
     "start": "node bin/start.js",
+    "draw": "node bin/draw.js",
     "dev": "node --env-file-if-exists=.env --watch-path=app.js --watch-path=bin --watch-path=config.js --watch-path=lib --watch-path=middleware --watch-path=models --watch-path=routes --watch-path=openapi.yml bin/start.js",
     "seed:words": "node --env-file-if-exists=.env bin/seed-words.js",
     "test": "cross-env NODE_ENV=test DATABASE_URL=mongodb://127.0.0.1/archioweb-test JWT_SECRET=test-secret node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --runInBand --passWithNoTests",

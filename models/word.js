@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const Schema = mongoose.Schema;
 
+// Un mot à dessiner (liste fixe chargée avec `npm run seed:words`)
 const wordSchema = new Schema(
   {
     label: {
@@ -10,9 +11,11 @@ const wordSchema = new Schema(
       unique: true,
       trim: true,
     },
+    // Seulement ces trois niveaux sont acceptés
     difficulty: {
       type: String,
-      trim: true,
+      required: true,
+      enum: ['easy', 'medium', 'hard'],
     },
   },
   { timestamps: true },

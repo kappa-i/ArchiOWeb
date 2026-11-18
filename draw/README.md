@@ -1,8 +1,11 @@
 # Module de dessin live
 
-La feuille de dessin de Devin'Art, en temps réel. Elle marche **sans le reste du back** : pas de MongoDB, pas de compte, pas de logique des tours.
+La feuille de dessin de Devin'Art, en temps réel. Elle tourne de deux façons :
 
-## Tester en local
+- **dans l'API** (`npm run dev`) : on y arrive depuis la salle d'attente, il faut un compte et jouer dans la room ;
+- **seule, pour tester** (`npm run draw`) : pas de MongoDB, pas de compte, juste un nom.
+
+## Tester seule, sans compte
 
 ```sh
 npm run draw
@@ -22,8 +25,7 @@ Raccourcis : `B` pinceau, `E` gomme, `F` remplir, `S` formes, `1`–`4` tailles,
 Contrairement au dessin, la salle d'attente utilise la **vraie API** (comptes, rooms, participants). Elle est servie par l'API elle-même sur `/play/lobby.html`, ce qui évite les problèmes de CORS.
 
 ```sh
-npm run dev    # l'API (il faut MongoDB)
-npm run draw   # l'écran de dessin, où l'on arrive quand la partie est lancée
+npm run dev    # l'API (il faut MongoDB et le .env)
 ```
 
 Puis ouvrir http://localhost:3000/play/lobby.html :
@@ -31,7 +33,7 @@ Puis ouvrir http://localhost:3000/play/lobby.html :
 1. Se connecter ou créer un compte. Le compte est gardé **par onglet** : un 2e onglet peut se connecter avec un autre compte et jouer un 2e joueur.
 2. Créer une room (on en devient l'hôte) ou rejoindre celle d'un ami avec son code. Le lien 🔗 envoie directement sur la page avec le code déjà rempli.
 3. Dans la salle d'attente : la liste des joueurs se met à jour toutes les 2 secondes. L'hôte change les réglages, exclut un joueur (deux clics sur la croix) et lance la partie à partir de 2 joueurs.
-4. Partie lancée : compte à rebours chez tout le monde, puis direction l'écran de dessin de la room (port 3001).
+4. Partie lancée : compte à rebours chez tout le monde, puis direction l'écran de dessin de la room (`/play/`), connecté avec le compte de la salle d'attente.
 
 Endpoints utilisés : `POST /users`, `POST /auth/login`, `GET /users/me`, `POST /rooms`, `GET /rooms/:code`, `PATCH /rooms/:code/settings`, `PATCH /rooms/:code`, `POST`, `GET`, `PATCH` et `DELETE /rooms/:code/participants`.
 
@@ -48,11 +50,15 @@ Endpoints utilisés : `POST /users`, `POST /auth/login`, `GET /users/me`, `POST 
 | `lobby.js`           | Salle d'attente : appels à l'API, rafraîchissement toutes les 2 secondes, compte à rebours   |
 | `lobby.css`          | Style propre à la salle d'attente (le reste vient de `style.css`)                            |
 | `../lib/realtime.js` | Serveur temps réel : relaie les messages aux joueurs de la même room                         |
-| `../bin/draw.js`     | Petit serveur de test : sert cette page + le temps réel (`npm run draw`)                     |
+| `../bin/start.js`    | L'API : branche le temps réel avec comptes (`attachRealtime(server, config.jwtSecret)`)      |
+| `../bin/draw.js`     | Petit serveur de test : sert cette page + le temps réel sans compte (`npm run draw`)         |
 
 ## Messages temps réel
 
-Connexion : `ws://<serveur>/ws?room=ABC123&name=Tanguy`.
+Connexion :
+
+- dans l'API : `ws://<serveur>/ws?room=ABC123&token=<jeton JWT>`. La connexion est fermée (code `1008`) si le jeton est invalide, si la room n'existe pas ou si l'utilisateur ne joue pas dans la room (ou en a été exclu). Le pseudo affiché vient du compte.
+- serveur de test : `ws://<serveur>/ws?room=ABC123&name=Tanguy`.
 
 Les points sont entre 0 et 1 (fraction de la largeur et de la hauteur) : le dessin est le même sur tous les écrans. Les tailles sont en pixels d'une feuille de 1600 × 1200.
 
@@ -86,12 +92,12 @@ Les opérations (`op.kind`) :
 
 La page sait déjà réagir à `round-started` (`duration`, `drawer`), `word-to-draw` (`word`) et `round-ended` (`word`) de `docs/INTENTION.md` : la démo locale s'arrête dès que le serveur les envoie.
 
-## Brancher sur le vrai back (plus tard)
+## Logique des tours (à faire)
 
-1. Dans `bin/start.js` : `attachRealtime(server)` après `http.createServer(app)`.
-2. Dans `lib/realtime.js` : identifier le joueur avec son **jeton JWT** (`?token=` dans l'URL) au lieu de `?name=`, et refuser s'il ne joue pas dans la room.
-3. Dans `lib/realtime.js` : `canDraw()` répond `true` seulement pour le dessinateur du tour.
-4. La logique des tours utilise les fonctions de `lib/realtime.js` :
+Le temps réel est branché sur l'API et vérifie les comptes. Il reste :
+
+1. Dans `lib/realtime.js` : `canDraw()` répond `true` seulement pour le dessinateur du tour (pour l'instant, tous les joueurs de la room peuvent dessiner).
+2. La logique des tours utilise les fonctions de `lib/realtime.js` :
    - `broadcast(code, message)` pour envoyer `round-started`, `word-found`… ;
    - `resetDrawing(code)` au début d'un tour ;
    - `getDrawing(code)` à la fin du tour, pour enregistrer le dessin.

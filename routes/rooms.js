@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { createHttpError } from '../lib/errors.js';
+import { startGame } from '../lib/game.js';
 import { authenticate, loadCurrentUser } from '../middleware/auth.js';
 import { loadRoomFromParams, requireRoomHost, requireRoomPlayer } from '../middleware/rooms.js';
 import Host from '../models/host.js';
@@ -80,7 +81,8 @@ router.patch(
   },
 );
 
-// Lancer la partie (seulement l'hôte) : le statut passe de « waiting » à « playing »
+// Lancer la partie (seulement l'hôte) : le statut passe de « waiting » à « playing »,
+// puis le serveur fait jouer les tours (lib/game.js)
 router.patch('/:code', authenticate, loadRoomFromParams, requireRoomHost, async (req, res) => {
   const body = req.body || {};
 
@@ -100,6 +102,7 @@ router.patch('/:code', authenticate, loadRoomFromParams, requireRoomHost, async 
 
   req.room.status = 'playing';
   await req.room.save();
+  await startGame(req.room);
 
   const host = await Host.findById(req.room.host);
   const settings = await Settings.findOne({ room: req.room.id });

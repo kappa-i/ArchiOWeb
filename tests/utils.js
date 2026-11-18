@@ -3,12 +3,16 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
 import { databaseUrl, jwtSecret } from '../config.js';
+import { stopAllGames } from '../lib/game.js';
+import Drawing from '../models/drawing.js';
+import Guess from '../models/guess.js';
 import Host from '../models/host.js';
 import Participant from '../models/participant.js';
 import Result from '../models/result.js';
 import Room from '../models/room.js';
 import Settings from '../models/settings.js';
 import User from '../models/user.js';
+import Word from '../models/word.js';
 
 // Connexion, déconnexion et nettoyage de la base de test
 export async function connectToDatabase() {
@@ -18,13 +22,17 @@ export async function connectToDatabase() {
 }
 
 export async function disconnectFromDatabase() {
+  stopAllGames();
   await mongoose.disconnect();
 }
 
+// Vide la base de test et arrête les parties lancées par le test précédent
 export async function cleanUpDatabase() {
   if (!mongoose.connection.name.endsWith('-test')) {
     throw new Error(`Refusing to clean up database ${mongoose.connection.name}`);
   }
+
+  stopAllGames();
 
   await User.deleteMany();
   await Host.deleteMany();
@@ -32,6 +40,9 @@ export async function cleanUpDatabase() {
   await Settings.deleteMany();
   await Participant.deleteMany();
   await Result.deleteMany();
+  await Word.deleteMany();
+  await Drawing.deleteMany();
+  await Guess.deleteMany();
 }
 
 // Crée un utilisateur en base, avec des valeurs par défaut pour les champs non donnés
@@ -82,6 +93,28 @@ export async function addParticipant(room, user) {
   const participant = await Participant.create({ room: room.id, user: user.id });
 
   return participant;
+}
+
+// Ajoute un mot à dessiner
+export async function createWord(label, difficulty = 'easy') {
+  const word = await Word.create({ label: label, difficulty: difficulty });
+
+  return word;
+}
+
+// Attend (au plus 5 secondes) que la fonction check renvoie autre chose que null.
+// Sert à attendre une étape de la partie, qui se déroule en arrière-plan.
+export async function waitFor(check) {
+  for (let i = 0; i < 100; i++) {
+    const result = await check();
+    if (result !== null) {
+      return result;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  throw new Error('Waited too long');
 }
 
 // Enregistre le résultat d'une partie terminée pour cet utilisateur

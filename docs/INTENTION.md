@@ -265,12 +265,12 @@ Il n'y a pas d'endpoint pour supprimer une room : elle est supprimée automatiqu
 
 Les dessins sont créés par le serveur au début de chaque tour (mot tiré au hasard). Les traits arrivent en temps réel par WebSocket et sont enregistrés à la fin du tour.
 
-| Méthode | URL                                | Description                                          | Auth                        |
-| ------- | ---------------------------------- | ---------------------------------------------------- | --------------------------- |
-| `GET`   | `/rooms/:code/dessins`             | Dessins de la partie                                 | Joueur                      |
-| `GET`   | `/rooms/:code/dessins/:id`         | Un dessin (le mot n'est visible qu'à la fin du tour) | Joueur                      |
-| `POST`  | `/rooms/:code/dessins/:id/guesses` | Proposer un mot                                      | Joueur (pas le dessinateur) |
-| `GET`   | `/rooms/:code/dessins/:id/guesses` | Propositions faites sur un dessin                    | Joueur                      |
+| Méthode | URL                                 | Description                                                     | Auth                        |
+| ------- | ----------------------------------- | --------------------------------------------------------------- | --------------------------- |
+| `GET`   | `/rooms/:code/drawings`             | Dessins de la partie (le mot n'est visible qu'à la fin du tour) | Joueur                      |
+| `GET`   | `/rooms/:code/drawings/:id`         | Un dessin — _pas encore fait_                                   | Joueur                      |
+| `POST`  | `/rooms/:code/drawings/:id/guesses` | Proposer un mot                                                 | Joueur (pas le dessinateur) |
+| `GET`   | `/rooms/:code/drawings/:id/guesses` | Propositions faites sur un dessin                               | Joueur                      |
 
 Les **mots** ne sont pas exposés par l'API : la liste est fixe et doit rester secrète pour les joueurs.
 
@@ -280,13 +280,19 @@ Les **mots** ne sont pas exposés par l'API : la liste est fixe et doit rester s
 
 Chaque joueur ouvre une connexion WebSocket en envoyant son jeton JWT. Il reçoit ensuite uniquement les messages de **sa** room.
 
+Ce qui est fait est détaillé dans [`draw/README.md`](../draw/README.md) (« Messages temps réel »).
+
 ### Messages envoyés par le client
 
-| Message  | Qui l'envoie   | Contenu                               |
-| -------- | -------------- | ------------------------------------- |
-| `stroke` | Le dessinateur | Un trait (points, couleur, épaisseur) |
+| Message                               | Qui l'envoie   | Contenu                                                                                |
+| ------------------------------------- | -------------- | -------------------------------------------------------------------------------------- |
+| `op`, `points`, `end`, `undo`, `redo` | Le dessinateur | Le dessin : traits, formes, remplissages, annuler / rétablir (relayés à toute la room) |
+
+Les propositions ne passent pas par le WebSocket mais par `POST /rooms/:code/drawings/:id/guesses`.
 
 ### Messages envoyés par le serveur
+
+Faits : `history`, `presence`, `round-started`, `word-to-draw`, `guess`, `word-found`, `round-ended`, `game-ended`, `game-error`. Pas encore faits : `player-joined`, `player-excluded`, `player-left`, `host-changed`, `settings-updated`, `game-started` (la salle d'attente se rafraîchit toutes les 2 secondes à la place).
 
 | Message            | Envoyé à                 | Quand                                                                |
 | ------------------ | ------------------------ | -------------------------------------------------------------------- |
@@ -298,7 +304,7 @@ Chaque joueur ouvre une connexion WebSocket en envoyant son jeton JWT. Il reçoi
 | `game-started`     | Toute la room            | L'hôte lance la partie                                               |
 | `round-started`    | Toute la room            | Début d'un tour : qui dessine, durée (sans le mot)                   |
 | `word-to-draw`     | Le dessinateur seulement | Début de son tour : le mot à dessiner                                |
-| `stroke`           | Toute la room sauf lui   | Le dessinateur a tracé un trait                                      |
+| `op`, `points`…    | Toute la room sauf lui   | Le dessin du dessinateur, relayé tel quel                            |
 | `guess`            | Toute la room            | Une proposition fausse (texte affiché dans le chat)                  |
 | `word-found`       | Toute la room            | Un joueur a trouvé (son nom et ses points, **sans** le mot)          |
 | `round-ended`      | Toute la room            | Fin du tour : le mot est révélé, scores mis à jour                   |

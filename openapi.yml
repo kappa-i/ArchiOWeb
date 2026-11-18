@@ -27,6 +27,8 @@ tags:
     description: Game rooms
   - name: participants
     description: Players of a room
+  - name: drawings
+    description: Drawings of a game, and the guesses of the players
 
 paths:
   /auth/login:
@@ -227,6 +229,9 @@ paths:
       description: >-
         Only the host can do it. The status goes from `waiting` to `playing`.
         At least 2 players (not excluded) are needed.
+        The server then plays the turns: 5 seconds later, the first player draws a random word,
+        and the turns are sent to the players over WebSocket (see `draw/README.md`).
+        At the end of the game, a result is saved for each player and the room is deleted.
       tags:
         - rooms
       security:
@@ -463,6 +468,115 @@ paths:
         404:
           $ref: '#/components/responses/ParticipantNotFound'
 
+  /rooms/{code}/drawings:
+    get:
+      summary: List the drawings of the game.
+      description: >-
+        One drawing per turn, sorted by start date.
+        The word is only visible once the turn is finished.
+        Only the players of the room can see the list.
+      tags:
+        - drawings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+      responses:
+        200:
+          description: The drawings of the game.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Drawing'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/NotAPlayer'
+        404:
+          $ref: '#/components/responses/RoomNotFound'
+
+  /rooms/{code}/drawings/{id}/guesses:
+    post:
+      summary: Guess the word of a drawing.
+      description: >-
+        Only for the current drawing, and not for the player who draws.
+        The comparison ignores uppercase letters, accents and spaces around.
+        A right guess gives between 50 and 150 points (more if it is found earlier),
+        and 25 points to the player who draws.
+        Wrong guesses are sent to the other players (`guess` message), right ones without the word
+        (`word-found` message). When everybody has found, the turn ends.
+      tags:
+        - drawings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+        - $ref: '#/components/parameters/DrawingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuessCreate'
+      responses:
+        201:
+          description: The guess, right or wrong.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Guess'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          description: The user is not a player of the room, or is the player who draws.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: The drawer cannot guess
+        404:
+          $ref: '#/components/responses/DrawingNotFound'
+        409:
+          description: The turn of this drawing is finished, or the player already found the word.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: This drawing is finished
+        422:
+          $ref: '#/components/responses/ValidationError'
+    get:
+      summary: List the guesses of a drawing.
+      description: >-
+        Sorted by date. During the turn, the content of the right guesses is hidden (`null`)
+        so that the word stays secret. Only the players of the room can see the list.
+      tags:
+        - drawings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+        - $ref: '#/components/parameters/DrawingId'
+      responses:
+        200:
+          description: The guesses of the drawing.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Guess'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/NotAPlayer'
+        404:
+          $ref: '#/components/responses/DrawingNotFound'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -495,6 +609,14 @@ components:
       schema:
         type: string
         example: 66b9d6c2f1a2b3c4d5e6f7b0
+    DrawingId:
+      name: id
+      in: path
+      required: true
+      description: ID of the drawing.
+      schema:
+        type: string
+        example: 66b9d6c2f1a2b3c4d5e6f7c1
 
   headers:
     Location:
@@ -730,6 +852,93 @@ components:
         - excluded
         - joinedAt
 
+    Drawing:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 66b9d6c2f1a2b3c4d5e6f7c1
+        participantId:
+          type: string
+          description: ID of the participant who draws.
+          example: 66b9d6c2f1a2b3c4d5e6f7b0
+        roundNumber:
+          type: integer
+          minimum: 1
+          description: 'Round of the game (in a round, each player draws once).'
+          example: 1
+        word:
+          type: string
+          nullable: true
+          description: The word to draw, only once the turn is finished (`null` before).
+          example: éléphant
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: '`null` while the turn is not finished.'
+      required:
+        - id
+        - participantId
+        - roundNumber
+        - word
+        - startedAt
+        - endedAt
+
+    Guess:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 66b9d6c2f1a2b3c4d5e6f7d2
+        participantId:
+          type: string
+          description: ID of the participant who guessed.
+          example: 66b9d6c2f1a2b3c4d5e6f7b0
+        username:
+          type: string
+          nullable: true
+          description: '`null` if the player has left the room.'
+          example: jdoe
+        content:
+          type: string
+          nullable: true
+          description: The proposed word (`null` for a right guess while the turn is not finished).
+          example: girafe
+        isCorrect:
+          type: boolean
+          example: false
+        points:
+          type: integer
+          minimum: 0
+          description: Points won with this guess (0 if wrong).
+          example: 0
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - participantId
+        - username
+        - content
+        - isCorrect
+        - points
+        - createdAt
+
+    GuessCreate:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: girafe
+      required:
+        - content
+
     RoomStart:
       type: object
       properties:
@@ -882,6 +1091,14 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             message: Participant not found
+    DrawingNotFound:
+      description: No room has this code, or this room has no drawing with this ID.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Drawing not found
     NotAPlayer:
       description: The authenticated user is not a player of this room.
       content:

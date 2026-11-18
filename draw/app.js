@@ -126,11 +126,20 @@ const status = document.getElementById('status');
 const statusText = document.getElementById('status-text');
 const inviteButton = document.getElementById('invite');
 const watching = document.getElementById('watching');
-const drawerName = document.getElementById('drawer-name');
 const roundOver = document.getElementById('round-over');
 const roundOverCard = document.getElementById('round-over-card');
+const roundOverTitle = document.getElementById('round-over-title');
 const roundWord = document.getElementById('round-word');
+const roundScores = document.getElementById('round-scores');
 const newRoundButton = document.getElementById('new-round');
+const chat = document.getElementById('chat');
+const chatMessages = document.getElementById('chat-messages');
+const guessForm = document.getElementById('guess-form');
+const guessInput = document.getElementById('guess-input');
+const gameOver = document.getElementById('game-over');
+const gameOverCard = document.getElementById('game-over-card');
+const gameOverTitle = document.getElementById('game-over-title');
+const ranking = document.getElementById('ranking');
 const toasts = document.getElementById('toasts');
 
 // ---------------------------------------------------------------------------
@@ -144,7 +153,12 @@ let color = COLORS[0].hex;
 let sizeIndex = 1;
 let canDraw = true;
 let currentWord = '';
-let serverRounds = false; // true dès que le serveur gère les manches
+
+// Arrivé depuis la salle d'attente : on a un jeton de connexion et c'est le serveur qui fait jouer les tours.
+// Sinon (serveur de test npm run draw) : manche de démo, sans compte.
+const token = sessionStorage.getItem('token');
+const serverRounds = token !== null;
+let currentDrawingId = null; // le dessin du tour en cours (pour envoyer ses propositions)
 
 // Mes opérations, pour annuler / rétablir seulement ce que j'ai fait
 let myOps = [];
@@ -167,9 +181,7 @@ if (location.protocol === 'http:' || location.protocol === 'https:') {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   let url = `${protocol}//${location.host}/ws?room=${encodeURIComponent(roomCode)}`;
 
-  // Arrivé depuis la salle d'attente : on envoie son jeton de connexion.
-  // Sinon (serveur de test npm run draw) : juste un nom.
-  const token = sessionStorage.getItem('token');
+  // Avec un compte : on envoie son jeton. Sinon (serveur de test) : juste un nom.
   if (token) {
     url = url + `&token=${encodeURIComponent(token)}`;
   } else {
@@ -205,10 +217,9 @@ function handleServerMessage(message) {
     return;
   }
 
-  // Messages du jeu (docs/INTENTION.md) : envoyés quand la logique des tours sera branchée
+  // Messages du jeu, envoyés par le serveur (lib/game.js)
   if (message.type === 'round-started') {
-    serverRounds = true;
-    startRound(message.duration, message.drawer === myName, message.drawer);
+    onRoundStarted(message);
     return;
   }
 
@@ -217,8 +228,28 @@ function handleServerMessage(message) {
     return;
   }
 
+  if (message.type === 'guess') {
+    addChatLine(message.player, message.text, '');
+    return;
+  }
+
+  if (message.type === 'word-found') {
+    onWordFound(message);
+    return;
+  }
+
   if (message.type === 'round-ended') {
-    endRound(message.word);
+    onRoundEnded(message);
+    return;
+  }
+
+  if (message.type === 'game-ended') {
+    showGameOver('Partie terminée !', message.ranking);
+    return;
+  }
+
+  if (message.type === 'game-error') {
+    showGameOver("Oups, la partie s'est arrêtée…", []);
     return;
   }
 
@@ -264,7 +295,7 @@ sheet.addEventListener('pointerdown', (event) => {
     dispatch({ type: 'op', op: { id: id, kind: 'fill', color: color, at: at } });
     rememberOp(id);
     showRipple(event);
-    bounceMascot();
+    bounceLogo();
     return;
   }
 
@@ -738,7 +769,10 @@ function startRound(duration, isDrawer, drawer) {
   canDraw = isDrawer;
   app.classList.toggle('is-watching', !isDrawer);
   watching.hidden = isDrawer;
-  drawerName.textContent = drawer || "Quelqu'un";
+  watching.textContent = `${drawer || "Quelqu'un"} dessine…`;
+
+  // Ceux qui devinent ont le chat des propositions à la place des outils
+  chat.hidden = isDrawer || !serverRounds;
 
   if (!isDrawer) {
     currentWord = '';
@@ -770,7 +804,7 @@ function endRound(wordToReveal) {
       { scale: 1, rotation: 0, opacity: 1, duration: 0.9, ease: 'elastic.out(1, 0.5)' },
     );
   }
-  bounceMascot();
+  bounceLogo();
 }
 
 function showWord(newWord) {
@@ -807,6 +841,192 @@ newRoundButton.addEventListener('click', () => {
   startDemoRound();
   clearDrawing();
 });
+
+// ---------------------------------------------------------------------------
+// Partie gérée par le serveur (lancée depuis la salle d'attente)
+// ---------------------------------------------------------------------------
+
+// En attendant le premier tour
+function waitForFirstTurn() {
+  canDraw = false;
+  app.classList.add('is-watching');
+  watching.hidden = false;
+  watching.textContent = 'La partie va commencer…';
+  wordLabel.textContent = 'Prépare-toi !';
+  word.innerHTML = '';
+  timerValue.textContent = '…';
+  rerollButton.hidden = true;
+  inviteButton.hidden = true;
+}
+
+function onRoundStarted(message) {
+  const isDrawer = message.drawer === myName;
+
+  currentDrawingId = message.drawingId;
+  roundOverTitle.textContent = 'Fin du tour !';
+  gameOver.hidden = true;
+
+  startRound(message.duration, isDrawer, message.drawer);
+  if (!isDrawer) {
+    showHint(message.hint);
+  }
+
+  guessInput.disabled = false;
+  guessInput.placeholder = 'Ta proposition…';
+  addChatLine(
+    '',
+    `Manche ${message.round}/${message.totalRounds} : ${message.drawer} dessine`,
+    'is-info',
+  );
+}
+
+// Ceux qui devinent voient seulement la longueur du mot : une case vide par lettre
+function showHint(hintText) {
+  wordLabel.textContent = 'Devine le mot !';
+  word.innerHTML = '';
+
+  for (const character of hintText) {
+    const letter = document.createElement('span');
+    if (character === '_') {
+      letter.className = 'letter is-blank';
+    } else {
+      letter.className = 'letter is-gap';
+      letter.textContent = character;
+    }
+    word.append(letter);
+  }
+}
+
+function onWordFound(message) {
+  addChatLine('', `${message.player} a trouvé ! +${message.points}`, 'is-found');
+  toast(`${message.player} a trouvé le mot !`);
+
+  if (message.player === myName) {
+    guessInput.disabled = true;
+    guessInput.value = '';
+    guessInput.placeholder = 'Bravo, tu as trouvé !';
+    bounceLogo();
+  }
+}
+
+function onRoundEnded(message) {
+  currentDrawingId = null;
+  guessInput.disabled = true;
+  renderScores(message.scores);
+  endRound(message.word);
+}
+
+// Scores de fin de tour, du meilleur au moins bon
+function renderScores(scores) {
+  roundScores.innerHTML = '';
+
+  for (const entry of scores) {
+    const item = document.createElement('li');
+    const name = document.createElement('span');
+    name.textContent = entry.username;
+    const points = document.createElement('strong');
+    points.textContent = `${entry.score} pts`;
+    item.append(name, points);
+    roundScores.append(item);
+  }
+}
+
+// Une ligne dans le chat : « joueur : proposition », ou un message du jeu (className is-info / is-found)
+function addChatLine(player, text, className) {
+  const line = document.createElement('li');
+  if (className) {
+    line.className = className;
+  }
+
+  if (player) {
+    const name = document.createElement('strong');
+    name.textContent = `${player} `;
+    line.append(name);
+  }
+  line.append(text);
+
+  chatMessages.append(line);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // On garde seulement les 50 dernières lignes
+  if (chatMessages.children.length > 50) {
+    chatMessages.firstElementChild.remove();
+  }
+}
+
+// Envoyer une proposition : POST /rooms/:code/drawings/:id/guesses avec son jeton.
+// La réponse arrive aussi par le temps réel (guess ou word-found), pour tout le monde.
+guessForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const content = guessInput.value.trim();
+  if (content === '' || currentDrawingId === null) {
+    return;
+  }
+  guessInput.value = '';
+
+  try {
+    const response = await fetch(`/rooms/${roomCode}/drawings/${currentDrawingId}/guesses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ content: content }),
+    });
+
+    if (!response.ok) {
+      toast('Proposition refusée : le tour est peut-être fini.');
+    }
+  } catch {
+    toast('Impossible de joindre le serveur.');
+  }
+});
+
+// Fin de la partie : le classement, puis retour au menu
+function showGameOver(title, entries) {
+  stopTimer();
+  canDraw = false;
+  roundOver.hidden = true;
+  gameOverTitle.textContent = title;
+  ranking.innerHTML = '';
+
+  for (const entry of entries) {
+    const item = document.createElement('li');
+    item.className = `ranking-item rank-${entry.rank}`;
+
+    const rank = document.createElement('span');
+    rank.className = 'rank';
+    rank.textContent = entry.rank;
+
+    const avatar = document.createElement('span');
+    avatar.className = 'avatar';
+    avatar.style.background = colorFromName(entry.username);
+    avatar.textContent = initials(entry.username);
+
+    const name = document.createElement('span');
+    name.className = 'ranking-name';
+    name.textContent = entry.username === myName ? `${entry.username} (toi)` : entry.username;
+
+    const points = document.createElement('strong');
+    points.textContent = `${entry.score} pts`;
+
+    item.append(rank, avatar, name, points);
+    ranking.append(item);
+  }
+
+  gameOver.hidden = false;
+
+  if (canAnimate) {
+    gsap.fromTo(
+      gameOverCard,
+      { scale: 0.5, rotation: -6, opacity: 0 },
+      { scale: 1, rotation: 0, opacity: 1, duration: 1, ease: 'elastic.out(1, 0.5)' },
+    );
+    gsap.fromTo(
+      ranking.children,
+      { x: -30, opacity: 0 },
+      { x: 0, opacity: 1, duration: 0.8, stagger: 0.12, delay: 0.3, ease: 'elastic.out(1, 0.6)' },
+    );
+  }
+}
 
 const TIMER_CIRCUMFERENCE = 2 * Math.PI * 26;
 let timerEnd = 0;
@@ -999,13 +1219,14 @@ function popIn(elements) {
   );
 }
 
-function bounceMascot() {
+// Le logo s'écrase et rebondit (remplissage, fin de tour, mot trouvé)
+function bounceLogo() {
   if (!canAnimate) {
     return;
   }
 
   gsap.fromTo(
-    '.brand .mascot-figure',
+    '.brand .logo',
     { scaleX: 1.25, scaleY: 0.8, transformOrigin: '50% 100%' },
     { scaleX: 1, scaleY: 1, duration: 0.9, ease: 'elastic.out(1.2, 0.3)', overwrite: 'auto' },
   );
@@ -1114,15 +1335,8 @@ function playIntro() {
       0.7,
     );
 
-  // La mascotte flotte et cligne des yeux, les taches du fond bougent doucement
-  gsap.to('.brand .mascot', { y: -4, duration: 1.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-  gsap.timeline({ repeat: -1, repeatDelay: 3.2 }).to('.brand .mascot-eyes', {
-    scaleY: 0.1,
-    transformOrigin: '50% 50%',
-    duration: 0.08,
-    yoyo: true,
-    repeat: 1,
-  });
+  // Le logo flotte, les taches du fond bougent doucement
+  gsap.to('.brand .logo', { y: -4, duration: 1.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
   gsap.to('.blob', {
     x: 'random(-80, 80)',
     y: 'random(-60, 60)',
@@ -1192,5 +1406,11 @@ selectShape('rect');
 selectTool('brush');
 renderAvatars([myName]);
 updateHistoryButtons();
-startDemoRound();
+
+if (serverRounds) {
+  waitForFirstTurn();
+} else {
+  startDemoRound();
+}
+
 playIntro();

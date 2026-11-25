@@ -28,11 +28,11 @@ Contrairement au dessin, la salle d'attente utilise la **vraie API** (comptes, r
 npm run dev    # l'API (il faut MongoDB et le .env)
 ```
 
-Puis ouvrir http://localhost:3000/play/lobby.html :
+Puis ouvrir http://localhost:3000 (la racine redirige vers `/play/lobby.html`) :
 
-1. Se connecter ou créer un compte. Le compte est gardé **par onglet** : un 2e onglet peut se connecter avec un autre compte et jouer un 2e joueur.
-2. Créer une room (on en devient l'hôte) ou rejoindre celle d'un ami avec son code. Le lien 🔗 envoie directement sur la page avec le code déjà rempli.
-3. Dans la salle d'attente : la liste des joueurs se met à jour toutes les 2 secondes. L'hôte change les réglages, exclut un joueur (deux clics sur la croix) et lance la partie à partir de 2 joueurs.
+1. Se connecter ou créer un compte. Un nouvel onglet reprend le dernier compte connecté sur le navigateur (pas besoin de se reconnecter). Ensuite, chaque onglet garde son propre compte : dans un 2e onglet, « Déconnexion » puis connexion avec un autre compte permet de jouer un 2e joueur.
+2. Créer une room (on en devient l'hôte) ou rejoindre celle d'un ami avec son code. Le lien 🔗 (`lobby.html?code=K7PX2M`) fait entrer directement dans la salle d'attente de la room, après s'être connecté si besoin.
+3. Dans la salle d'attente : la liste des joueurs se met à jour toutes les 2 secondes. L'hôte change les réglages (joueurs max, manches, durée d'un tour, difficulté des mots), exclut un joueur (deux clics sur la croix) et lance la partie à partir de 2 joueurs.
 4. Partie lancée : compte à rebours chez tout le monde, puis direction l'écran de dessin de la room (`/play/`), connecté avec le compte de la salle d'attente. Le serveur fait jouer les tours (voir « Déroulement d'une partie ») ; à la fin, un écran de classement propose de revenir au menu.
 
 Endpoints utilisés : `POST /users`, `POST /auth/login`, `GET /users/me`, `POST /rooms`, `GET /rooms/:code`, `PATCH /rooms/:code/settings`, `PATCH /rooms/:code`, `POST`, `GET`, `PATCH` et `DELETE /rooms/:code/participants`, `POST /rooms/:code/drawings/:id/guesses`.
@@ -103,7 +103,7 @@ Les opérations (`op.kind`) :
 
 1. L'hôte lance la partie (`PATCH /rooms/:code`). 5 secondes plus tard, le premier tour commence.
 2. **Une manche = chaque joueur dessine une fois**, dans l'ordre d'arrivée. Nombre de manches et durée d'un tour = réglages de la room.
-3. À chaque tour, un mot est tiré au hasard dans la base (jamais deux fois le même dans la partie). **Il faut avoir chargé les mots** : `npm run seed:words`. Seul le dessinateur peut dessiner (`canDraw()` dans `lib/realtime.js`).
+3. À chaque tour, un mot est tiré au hasard dans la base, parmi ceux de la difficulté choisie par l'hôte (facile, moyen, difficile ou mélangé), jamais deux fois le même dans la partie. **Il faut avoir chargé les mots** : `npm run seed:words`. Seul le dessinateur peut dessiner (`canDraw()` dans `lib/realtime.js`).
 4. Les autres proposent des mots avec **`POST /rooms/:code/drawings/:id/guesses`** (documenté dans `openapi.yml`). Majuscules, accents et espaces autour ne comptent pas, et « oe » vaut « œ » (`coeur` = `cœur`).
 5. Points : celui qui trouve gagne `50 + 100 × temps restant / durée du tour` (entre 50 et 150), le dessinateur gagne 25 par joueur qui trouve.
 6. Le tour se termine quand le temps est écoulé ou que tout le monde a trouvé : le dessin est enregistré (`Drawing.data`), le mot est révélé, pause de 4 secondes, tour suivant.

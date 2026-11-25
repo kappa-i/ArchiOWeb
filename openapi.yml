@@ -923,10 +923,20 @@ components:
           minimum: 30
           maximum: 180
           default: 80
+        difficulty:
+          type: string
+          description: Difficulty of the words to draw. `mixed` picks words of every difficulty.
+          enum:
+            - mixed
+            - easy
+            - medium
+            - hard
+          default: mixed
       required:
         - maxPlayers
         - rounds
         - turnDuration
+        - difficulty
 
     SettingsUpdate:
       type: object
@@ -944,6 +954,16 @@ components:
           type: integer
           minimum: 30
           maximum: 180
+        difficulty:
+          type: string
+          enum:
+            - mixed
+            - easy
+            - medium
+            - hard
+      example:
+        rounds: 5
+        difficulty: hard
 
     Participant:
       type: object

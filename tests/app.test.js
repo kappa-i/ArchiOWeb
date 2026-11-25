@@ -3,11 +3,12 @@ import supertest from 'supertest';
 import app from '../app.js';
 
 describe('GET /', () => {
-  it('should redirect to the API documentation', async () => {
+  // La racine envoie vers le menu du jeu
+  it('should redirect to the game menu', async () => {
     const res = await supertest(app).get('/');
 
     expect(res.status).toBe(302);
-    expect(res.headers.location).toBe('/api-docs');
+    expect(res.headers.location).toBe('/play/lobby.html');
   });
 });
 

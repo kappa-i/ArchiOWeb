@@ -50,6 +50,7 @@ const meAvatar = document.getElementById('me-avatar');
 const meName = document.getElementById('me-name');
 const logoutButton = document.getElementById('logout');
 
+const authSubtitle = document.getElementById('auth-subtitle');
 const loginTab = document.getElementById('login-tab');
 const signupTab = document.getElementById('signup-tab');
 const authForm = document.getElementById('auth-form');
@@ -73,6 +74,7 @@ const playerList = document.getElementById('player-list');
 const settingsCard = document.getElementById('settings-card');
 const settingsNote = document.getElementById('settings-note');
 const settingElements = document.querySelectorAll('.setting');
+const difficultyButtons = document.querySelectorAll('[data-difficulty]');
 const leaveButton = document.getElementById('leave-room');
 const waitingText = document.getElementById('waiting-text');
 const startButton = document.getElementById('start-game');
@@ -85,8 +87,16 @@ const toasts = document.getElementById('toasts');
 // État
 // ---------------------------------------------------------------------------
 
-// Le jeton est gardé par onglet : deux onglets peuvent être deux joueurs différents
+// Le jeton est gardé par onglet (sessionStorage) : deux onglets peuvent être deux joueurs différents.
+// Un nouvel onglet (ex. ouvert avec un lien d'invitation) reprend le dernier compte connecté
+// sur ce navigateur (localStorage) : pas besoin de se reconnecter.
 let token = sessionStorage.getItem('token');
+if (!token) {
+  token = localStorage.getItem('token');
+  if (token) {
+    sessionStorage.setItem('token', token);
+  }
+}
 let me = null; // l'utilisateur connecté (GET /users/me)
 let room = null; // la room affichée (GET /rooms/:code)
 let players = []; // ses joueurs (GET /rooms/:code/participants)
@@ -173,9 +183,16 @@ function showScreen(screen) {
   popIn(screen.querySelectorAll('.card, .home-intro'));
 }
 
-// Au chargement : on vérifie le jeton, puis on retourne dans la room si on y était déjà
+// Au chargement : on vérifie le jeton, puis on entre dans la room du lien d'invitation,
+// ou on retourne dans la room si on y était déjà
 async function start() {
   if (!token) {
+    // Arrivé avec un lien d'invitation : on explique pourquoi il faut se connecter
+    const params = new URLSearchParams(location.search);
+    if (params.get('code')) {
+      authSubtitle.textContent = 'Connecte-toi pour rejoindre la room de tes amis.';
+    }
+
     showScreen(authScreen);
     return;
   }
@@ -193,6 +210,20 @@ async function start() {
   meAvatar.style.background = colorFromName(me.username);
   homeName.textContent = me.username;
 
+  // Arrivé avec un lien d'invitation (lobby.html?code=K7PX2M) : on rejoint directement la room
+  const inviteCode = takeInviteCode();
+  if (inviteCode) {
+    try {
+      await joinRoom(inviteCode);
+    } catch (error) {
+      // Room introuvable, pleine, déjà lancée… : on reste sur l'accueil avec le message
+      showHome();
+      joinCodeInput.value = inviteCode;
+      showError(joinError, error);
+    }
+    return;
+  }
+
   const savedCode = sessionStorage.getItem('roomCode');
   if (savedCode) {
     await openRoom(savedCode);
@@ -201,18 +232,26 @@ async function start() {
   }
 }
 
+// Lit le code du lien d'invitation, puis l'enlève de l'adresse de la page :
+// en rechargeant la page ou après « Quitter », on ne rejoint pas la room une 2e fois.
+// Renvoie null s'il n'y a pas de code.
+function takeInviteCode() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+
+  if (!code) {
+    return null;
+  }
+
+  history.replaceState(null, '', location.pathname);
+  return code.trim().toUpperCase();
+}
+
 function showHome() {
   stopRefresh();
   room = null;
   players = [];
   joinError.hidden = true;
-
-  // Arrivé avec un lien d'invitation (lobby.html?code=K7PX2M) : le code est déjà rempli
-  const params = new URLSearchParams(location.search);
-  if (params.get('code')) {
-    joinCodeInput.value = params.get('code').toUpperCase();
-  }
-
   showScreen(homeScreen);
 }
 
@@ -262,6 +301,7 @@ authForm.addEventListener('submit', async (event) => {
 
     token = result.token;
     sessionStorage.setItem('token', token);
+    localStorage.setItem('token', token);
     passwordInput.value = '';
     await start();
   } catch (error) {
@@ -284,6 +324,7 @@ function logout() {
   me = null;
   room = null;
   sessionStorage.removeItem('token');
+  localStorage.removeItem('token');
   sessionStorage.removeItem('roomCode');
   showScreen(authScreen);
 }
@@ -319,18 +360,27 @@ joinForm.addEventListener('submit', async (event) => {
   }
 
   try {
+    await joinRoom(code);
+  } catch (error) {
+    showError(joinError, error);
+    shake(joinCodeInput);
+  }
+});
+
+// Rejoint la room avec son code, puis affiche sa salle d'attente.
+// Lance une erreur si on ne peut pas la rejoindre (code inconnu, room pleine, exclu…).
+async function joinRoom(code) {
+  try {
     await callApi('POST', `/rooms/${code}/participants`);
   } catch (error) {
     // Déjà dans cette room (ex. onglet fermé puis rouvert) : on y entre simplement
     if (error.message !== 'You are already in this room') {
-      showError(joinError, error);
-      shake(joinCodeInput);
-      return;
+      throw error;
     }
   }
 
   await openRoom(code);
-});
+}
 
 // ---------------------------------------------------------------------------
 // 3. Salle d'attente
@@ -563,6 +613,13 @@ function renderSettings(isHost) {
     buttons[0].disabled = value <= minimumValue(name);
     buttons[1].disabled = value >= limits.max;
   }
+
+  // Difficulté : le bouton choisi est mis en avant, seul l'hôte peut cliquer
+  for (const button of difficultyButtons) {
+    const isChosen = button.dataset.difficulty === room.settings.difficulty;
+    button.setAttribute('aria-pressed', String(isChosen));
+    button.disabled = !isHost;
+  }
 }
 
 // On ne descend pas le nombre de joueurs max sous le nombre de joueurs déjà là
@@ -596,16 +653,45 @@ async function changeSetting(setting, direction) {
   const body = {};
   body[name] = newValue;
 
+  const saved = await saveSettings(body);
+  if (saved) {
+    pop(setting.querySelector('output'), 1.4);
+  }
+}
+
+for (const button of difficultyButtons) {
+  button.addEventListener('click', () => {
+    changeDifficulty(button);
+  });
+}
+
+async function changeDifficulty(button) {
+  const difficulty = button.dataset.difficulty;
+
+  if (difficulty === room.settings.difficulty) {
+    return;
+  }
+
+  const saved = await saveSettings({ difficulty: difficulty });
+  if (saved) {
+    pop(button, 1.2);
+  }
+}
+
+// Envoie les nouveaux réglages à l'API, puis redessine la salle d'attente.
+// Renvoie true si c'est enregistré, false en cas d'erreur.
+async function saveSettings(body) {
   isSavingSettings = true;
 
   try {
     room = await callApi('PATCH', `/rooms/${room.code}/settings`, body);
     isSavingSettings = false;
     renderRoom(players);
-    pop(setting.querySelector('output'), 1.4);
+    return true;
   } catch (error) {
     isSavingSettings = false;
     toast(translateError(error));
+    return false;
   }
 }
 

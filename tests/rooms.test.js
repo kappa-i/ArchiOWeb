@@ -32,7 +32,7 @@ describe('POST /rooms', () => {
       code: expect.any(String),
       status: 'waiting',
       hostUserId: user.id,
-      settings: { maxPlayers: 8, rounds: 3, turnDuration: 80 },
+      settings: { maxPlayers: 8, rounds: 3, turnDuration: 80, difficulty: 'mixed' },
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
     });
@@ -100,10 +100,15 @@ describe('PATCH /rooms/:code/settings', () => {
     const res = await supertest(app)
       .patch('/rooms/ABC123/settings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ maxPlayers: 4, rounds: 5, turnDuration: 60 });
+      .send({ maxPlayers: 4, rounds: 5, turnDuration: 60, difficulty: 'hard' });
 
     expect(res.status).toBe(200);
-    expect(res.body.settings).toEqual({ maxPlayers: 4, rounds: 5, turnDuration: 60 });
+    expect(res.body.settings).toEqual({
+      maxPlayers: 4,
+      rounds: 5,
+      turnDuration: 60,
+      difficulty: 'hard',
+    });
   });
 
   // Un autre utilisateur que l'hôte : interdit
@@ -131,6 +136,20 @@ describe('PATCH /rooms/:code/settings', () => {
       .patch('/rooms/ABC123/settings')
       .set('Authorization', `Bearer ${token}`)
       .send({ maxPlayers: 20 });
+
+    expect(res.status).toBe(422);
+  });
+
+  // Difficulté inconnue : refusée
+  it('should respond with 422 if the difficulty is unknown', async () => {
+    const user = await createUser();
+    const token = generateToken(user);
+    await createRoom(user, 'ABC123');
+
+    const res = await supertest(app)
+      .patch('/rooms/ABC123/settings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ difficulty: 'impossible' });
 
     expect(res.status).toBe(422);
   });

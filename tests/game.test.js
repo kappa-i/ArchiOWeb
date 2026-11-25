@@ -91,3 +91,24 @@ describe('A whole game', () => {
     expect(await Participant.countDocuments({ room: room.id })).toBe(0);
   });
 });
+
+describe('Word difficulty', () => {
+  // Difficulté « difficile » : le mot tiré est le seul mot difficile de la base
+  it('should only pick words of the chosen difficulty', async () => {
+    const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
+    const bob = await createUser({ username: 'bob', email: 'bob@example.com' });
+    const room = await createRoom(alice);
+    await addParticipant(room, bob);
+    await Settings.updateOne({ room: room.id }, { difficulty: 'hard' });
+    await createWord('chat', 'easy');
+    await createWord('maison', 'medium');
+    const hardWord = await createWord('volcan', 'hard');
+    room.status = 'playing';
+    await room.save();
+
+    await startGame(room);
+
+    const drawing = await waitFor(() => Drawing.findOne({ room: room.id }));
+    expect(drawing.word.toString()).toBe(hardWord.id);
+  });
+});

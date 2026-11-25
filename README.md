@@ -3,8 +3,8 @@
 API REST (Express 5 + MongoDB 8) du projet ArchiOWeb — COMEM+, HEIG-VD 2026-2027.
 
 - Consigne : https://github.com/mediacomem/comem-archioweb
-- API déployée (Render + MongoDB Atlas) : https://devinart-8z4w.onrender.com (documentation)
-- Jouer en ligne : https://devinart-8z4w.onrender.com/play/lobby.html
+- API déployée (Render + MongoDB Atlas) : https://devinart-8z4w.onrender.com/api-docs (documentation)
+- Jouer en ligne : https://devinart-8z4w.onrender.com
 
 > Hébergement gratuit : le serveur s'endort après ~15 minutes sans visite, la première visite prend alors ~30 secondes.
 
@@ -54,7 +54,7 @@ On peut relancer la commande sans risque : elle ne crée pas de doublons. Après
 npm run dev
 ```
 
-Puis ouvrir http://localhost:3000 (documentation de l'API).
+Puis ouvrir http://localhost:3000/api-docs (documentation de l'API). La racine http://localhost:3000 ouvre le menu du jeu.
 
 ## Lancer les tests
 
@@ -80,7 +80,7 @@ Puis ouvrir http://localhost:3001 dans 2 onglets : ce qu'on dessine dans l'un ap
 
 ## Jouer (salle d'attente + dessin)
 
-Tout passe par l'API : lancer `npm run dev`, puis ouvrir http://localhost:3000/play/lobby.html dans 2 onglets, avec un compte différent dans chacun. Quand l'hôte lance la partie, tout le monde arrive sur l'écran de dessin de la room, en temps réel. Détails dans [`draw/README.md`](draw/README.md).
+Tout passe par l'API : lancer `npm run dev`, puis ouvrir http://localhost:3000 dans 2 onglets, avec un compte différent dans chacun (un nouvel onglet reprend le dernier compte connecté : cliquer « Déconnexion » dans le 2e onglet, puis se connecter avec l'autre compte). Quand l'hôte lance la partie, tout le monde arrive sur l'écran de dessin de la room, en temps réel. Détails dans [`draw/README.md`](draw/README.md).
 
 ## Organisation
 

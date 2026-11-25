@@ -14,11 +14,11 @@ Bugs et incohérences repérés en relisant le code, à corriger plus tard.
 - **Problème** : si le dernier joueur quittait une room `playing`, elle était supprimée sans fin de partie, et ses dessins et propositions restaient dans la base.
 - **Correction** : pendant une partie, s'il reste moins de 2 joueurs, la partie se termine tout de suite (`finishGame` dans `lib/game.js`) : résultat pour le joueur restant, message `game-ended`, puis la room est supprimée avec tout son contenu. Vaut aussi quand un joueur supprime son compte.
 
-## 3. `maxPlayers` peut descendre sous le nombre de joueurs
+## 3. ~~`maxPlayers` peut descendre sous le nombre de joueurs~~ — corrigé
 
 - **Où** : `routes/rooms.js` (`PATCH /rooms/:code/settings`)
-- **Problème** : avec 5 joueurs dans la room, l'hôte peut mettre `maxPlayers` à 2.
-- **Piste** : refuser (409) si la nouvelle valeur est plus petite que le nombre de joueurs.
+- **Problème** : avec 5 joueurs dans la room, l'hôte pouvait mettre `maxPlayers` à 2.
+- **Correction** : refusé avec **409** si la nouvelle valeur est plus petite que le nombre de joueurs (les valeurs hors limites restent en 422).
 
 ## 4. Exclusion possible pendant la partie
 

@@ -284,6 +284,7 @@ paths:
       description: >-
         Only the host can do it, and only before the game has started.
         Only the fields sent in the body are modified.
+        `maxPlayers` cannot be less than the number of players already in the room.
       tags:
         - rooms
       security:
@@ -310,13 +311,19 @@ paths:
         404:
           $ref: '#/components/responses/RoomNotFound'
         409:
-          description: The game has already started.
+          description: >-
+            The game has already started, or `maxPlayers` is less than the number of players already in the room.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                message: The game has already started
+              examples:
+                started:
+                  value:
+                    message: The game has already started
+                tooManyPlayers:
+                  value:
+                    message: There are already 3 players in the room
         422:
           $ref: '#/components/responses/ValidationError'
 

@@ -449,6 +449,9 @@ paths:
         A player can only remove themselves.
         If the host leaves, the player who arrived the earliest becomes the new host.
         If the last player leaves, the room is deleted with its settings.
+        During a game, if less than 2 players are left, the game ends right away:
+        the remaining player gets their result, the players receive the `game-ended` message (WebSocket),
+        and the room is deleted with all its content (drawings, guesses).
       tags:
         - participants
       security:

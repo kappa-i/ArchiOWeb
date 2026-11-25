@@ -109,4 +109,4 @@ Les opérations (`op.kind`) :
 6. Le tour se termine quand le temps est écoulé ou que tout le monde a trouvé : le dessin est enregistré (`Drawing.data`), le mot est révélé, pause de 4 secondes, tour suivant.
 7. Fin de partie : un résultat par joueur (`Result`, utilisé par `GET /users/:id/stats`), le classement est envoyé, puis la room et tout son contenu sont supprimés.
 
-S'il reste moins de 2 joueurs, la partie se termine. Si tout le monde est parti (room supprimée), elle s'arrête.
+Si un joueur quitte la room (ou supprime son compte) et qu'il reste moins de 2 joueurs, la partie se termine tout de suite : le joueur restant a son résultat, puis la room est supprimée avec tout son contenu.

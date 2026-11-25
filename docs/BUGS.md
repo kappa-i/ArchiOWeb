@@ -8,11 +8,11 @@ Bugs et incohérences repérés en relisant le code, à corriger plus tard.
 - **Problème** : on supprimait le `User`, mais pas ses `Participant` ni son `Host`. `GET /rooms/:code/participants` plantait alors (**500**) pour toute la room.
 - **Correction** : avant de supprimer le compte, l'utilisateur quitte toutes ses rooms avec la même logique que `DELETE /rooms/:code/participants/:id` (fonction `removePlayer` dans `lib/rooms.js`).
 
-## 2. Quitter une partie en cours n'est pas géré
+## 2. ~~Quitter une partie en cours n'est pas géré~~ — corrigé
 
 - **Où** : `routes/participants.js` (`DELETE /rooms/:code/participants/:id`)
-- **Problème** : si le dernier joueur quitte une room `playing`, elle est supprimée sans fin de partie.
-- **Attendu** (`docs/INTENTION.md`, « Cycle de vie d'une room ») : calculer le récapitulatif et enregistrer un résultat par joueur avant de supprimer la room.
+- **Problème** : si le dernier joueur quittait une room `playing`, elle était supprimée sans fin de partie, et ses dessins et propositions restaient dans la base.
+- **Correction** : pendant une partie, s'il reste moins de 2 joueurs, la partie se termine tout de suite (`finishGame` dans `lib/game.js`) : résultat pour le joueur restant, message `game-ended`, puis la room est supprimée avec tout son contenu. Vaut aussi quand un joueur supprime son compte.
 
 ## 3. `maxPlayers` peut descendre sous le nombre de joueurs
 

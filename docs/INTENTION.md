@@ -231,15 +231,15 @@ Légende de la colonne Auth :
 
 ### Utilisateurs et authentification
 
-| Méthode  | URL                  | Description                                                                           | Auth   |
-| -------- | -------------------- | ------------------------------------------------------------------------------------- | ------ |
-| `POST`   | `/users`             | S'inscrire                                                                            | —      |
-| `POST`   | `/auth/login`        | Se connecter avec e-mail et mot de passe (renvoie un JWT)                             | —      |
-| `GET`    | `/users/me`          | Voir son profil                                                                       | Compte |
-| `PATCH`  | `/users/me`          | Modifier son profil (nom d'utilisateur, e-mail, mot de passe)                         | Compte |
-| `DELETE` | `/users/me`          | Supprimer son compte                                                                  | Compte |
-| `GET`    | `/users/:id/stats`   | Statistiques d'un joueur (voir « Statistiques du profil »), calculées par agrégation  | —      |
-| `GET`    | `/users/leaderboard` | Classement des joueurs — **paginé**, filtre optionnel `periode` (semaine, mois, tout) | —      |
+| Méthode  | URL                  | Description                                                                                                                                                                                 | Auth   |
+| -------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| `POST`   | `/users`             | S'inscrire                                                                                                                                                                                  | —      |
+| `POST`   | `/auth/login`        | Se connecter avec e-mail et mot de passe (renvoie un JWT)                                                                                                                                   | —      |
+| `GET`    | `/users/me`          | Voir son profil                                                                                                                                                                             | Compte |
+| `PATCH`  | `/users/me`          | Modifier son profil (nom d'utilisateur, e-mail, mot de passe)                                                                                                                               | Compte |
+| `DELETE` | `/users/me`          | Supprimer son compte                                                                                                                                                                        | Compte |
+| `GET`    | `/users/:id/stats`   | Statistiques d'un joueur (voir « Statistiques du profil »), calculées par agrégation                                                                                                        | —      |
+| `GET`    | `/users/leaderboard` | Classement par total de points, paginé avec `page` (défaut 1) et `limit` (défaut 10, maximum 100), filtre optionnel `period` (`all`, `week`, `month`; périodes glissantes de 7 ou 30 jours) | —      |
 
 ### Rooms
 

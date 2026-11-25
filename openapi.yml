@@ -175,6 +175,64 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 message: User not found
+  /users/leaderboard:
+    get:
+      summary: Get the paginated player leaderboard.
+      description: >-
+        Players are ranked by their total points in the selected period.
+        `week` and `month` cover the last 7 and 30 days. Players without results
+        in the selected period are not included.
+      tags:
+        - users
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Page number, starting at 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of players per page, from 1 to 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: period
+          in: query
+          required: false
+          description: Rolling period used to filter game results.
+          schema:
+            type: string
+            enum:
+              - all
+              - week
+              - month
+            default: all
+      responses:
+        200:
+          description: The requested page of the leaderboard.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+        400:
+          description: One or more query parameters are invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidPeriod:
+                  value:
+                    message: period must be all, week or month
+                invalidPage:
+                  value:
+                    message: page must be a positive integer
 
   /rooms:
     post:
@@ -742,6 +800,55 @@ components:
         - player
         - guesser
         - drawer
+
+    LeaderboardResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              rank:
+                type: integer
+                example: 1
+              userId:
+                type: string
+                example: 66b9d6c2f1a2b3c4d5e6f7a8
+              username:
+                type: string
+                example: jdoe
+              totalPoints:
+                type: integer
+                example: 450
+            required:
+              - rank
+              - userId
+              - username
+              - totalPoints
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 1
+            limit:
+              type: integer
+              example: 10
+            totalItems:
+              type: integer
+              example: 24
+            totalPages:
+              type: integer
+              example: 3
+          required:
+            - page
+            - limit
+            - totalItems
+            - totalPages
+      required:
+        - items
+        - pagination
 
     Room:
       type: object

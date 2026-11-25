@@ -16,8 +16,8 @@ Source : https://github.com/mediacomem/comem-archioweb (consigne 2026-2027). Coc
 - [ ] Au moins 2 autres types de ressources, liés entre eux (agrégation/composition)
 - [ ] Au moins un type lié aux utilisateurs
 - [ ] CRUD minimal suffisant pour une app mobile
-- [ ] Au moins une liste paginée
-- [ ] Au moins une liste avec filtres optionnels
+- [x] Au moins une liste paginée
+- [x] Au moins une liste avec filtres optionnels
 - [ ] Au moins une ressource agrégée via pipeline MongoDB (ex. nombre d'items par user)
 - [ ] Autorisations définies et appliquées selon le domaine
 - [ ] Au moins une opération restreinte pour les utilisateurs authentifiés

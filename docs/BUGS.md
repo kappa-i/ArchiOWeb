@@ -30,10 +30,10 @@ Bugs et incohérences repérés en relisant le code, à corriger plus tard.
 - **Où** : `routes/participants.js` (`POST /rooms/:code/participants`)
 - **Problème** : on compte les joueurs puis on crée le participant. Si deux joueurs rejoignent exactement en même temps, la room peut dépasser la limite.
 
-## 6. Documentation pas à jour
+## 6. ~~Documentation pas à jour~~ — corrigé
 
-- `README.md` parle de MongoDB 8 alors que la CI utilise la 7.0.
-- `docs/REQUIREMENTS.md` : presque rien n'est coché alors qu'une partie est faite (inscription, authentification, validation…).
+- `README.md` parlait seulement de MongoDB 8 alors que la CI utilise la 7.0 : nouvelle section « Lancer les tests » qui explique pourquoi (la 8.0 ne démarre pas sur les machines de GitHub).
+- `docs/REQUIREMENTS.md` : les cases sont cochées selon ce qui est fait.
 
 ## 7. ~~« coeur » refusé pour le mot « cœur »~~ — corrigé
 

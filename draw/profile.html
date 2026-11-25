@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#b7a8ff" />
+    <title>Devin'Art · Profil</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Même style de base que la salle d'attente, puis le style propre au profil -->
+    <link rel="icon" href="logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="lobby.css" />
+    <link rel="stylesheet" href="profile.css" />
+
+    <script type="module" src="profile.js"></script>
+  </head>
+
+  <body class="lobby-page">
+    <div class="backdrop" aria-hidden="true">
+      <span class="blob blob-1"></span>
+      <span class="blob blob-2"></span>
+      <span class="blob blob-3"></span>
+    </div>
+
+    <main class="lobby">
+      <header class="lobby-header">
+        <a class="brand" href="lobby.html">
+          <img class="logo" src="logo.svg" alt="" />
+          <span class="brand-name">Devin'<span>Art</span></span>
+        </a>
+
+        <a class="nav-link pill" href="lobby.html">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          <span>Menu</span>
+        </a>
+      </header>
+
+      <!-- Joueur introuvable (mauvais lien) -->
+      <p class="card glass profile-error" id="profile-error" hidden>
+        Ce joueur n'existe pas (ou a supprimé son compte).
+      </p>
+
+      <div class="profile" id="profile" hidden>
+        <!-- 1. Qui est-ce -->
+        <section class="profile-head">
+          <span class="avatar profile-avatar" id="profile-avatar"></span>
+          <h1 class="home-title" id="profile-name"></h1>
+          <p class="subtitle" id="profile-subtitle"></p>
+        </section>
+
+        <!-- 2. Statistiques (GET /users/:id/stats) -->
+        <section class="stats-grid">
+          <article class="card glass stat-card is-wide">
+            <h2>Joueur</h2>
+            <dl class="stat-tiles" id="player-stats"></dl>
+          </article>
+
+          <article class="card glass stat-card">
+            <h2>Devineur</h2>
+            <dl class="stat-tiles" id="guesser-stats"></dl>
+          </article>
+
+          <article class="card glass stat-card">
+            <h2>Dessinateur</h2>
+            <dl class="stat-tiles" id="drawer-stats"></dl>
+          </article>
+        </section>
+
+        <!-- 3. Mon compte : seulement sur son propre profil -->
+        <section class="card glass account-card" id="account" hidden>
+          <h2>Mon compte</h2>
+
+          <form class="form" id="account-form">
+            <label class="field">
+              <span>Pseudo</span>
+              <input id="username" autocomplete="username" minlength="3" maxlength="20" required />
+            </label>
+            <label class="field">
+              <span>E-mail</span>
+              <input id="email" type="email" autocomplete="email" required />
+            </label>
+            <label class="field">
+              <span>Nouveau mot de passe</span>
+              <input
+                id="password"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Laisse vide pour garder l'actuel"
+              />
+            </label>
+            <p class="form-error" id="account-error" hidden></p>
+            <button class="big-button is-wide" type="submit" id="save-account">Enregistrer</button>
+          </form>
+
+          <div class="danger-zone">
+            <p class="subtitle">
+              Supprimer ton compte efface aussi tes statistiques. C'est définitif.
+            </p>
+            <button class="secondary-button delete-button" id="delete-account">
+              Supprimer mon compte
+            </button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+  </body>
+</html>

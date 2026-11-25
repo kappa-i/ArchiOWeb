@@ -41,6 +41,16 @@ describe('GET /play/leaderboard.html', () => {
   });
 });
 
+describe('GET /play/profile.html', () => {
+  // La page du profil est servie par l'API
+  it('should serve the profile page', async () => {
+    const res = await supertest(app).get('/play/profile.html');
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/html');
+  });
+});
+
 describe('GET /unknown', () => {
   it('should respond with 404 Not Found', async () => {
     const res = await supertest(app).get('/unknown');

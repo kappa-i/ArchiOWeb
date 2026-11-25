@@ -91,6 +91,7 @@
   max-width: 100%;
   overflow: hidden;
   font-size: 18px;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -341,6 +342,18 @@
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Les pseudos mènent au profil du joueur */
+.podium-name,
+.row-name {
+  color: inherit;
+  text-decoration: none;
+}
+
+.podium-name:hover,
+.row-name:hover {
+  text-decoration: underline;
 }
 
 .column-stat {

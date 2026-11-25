@@ -48,6 +48,16 @@ Le bouton 🏆 « Classement » de l'en-tête (ou « Voir le classement » à la
 
 Endpoints utilisés : `GET /users/leaderboard` (liste paginée avec `period` et `search`), `GET /users/leaderboard/highlights` (podium et tendances), `GET /users/me` (si connecté).
 
+## Profil
+
+Un clic sur son pseudo en haut à droite du menu ouvre **son profil** (`/play/profile.html`, il faut être connecté). Un clic sur un pseudo du classement ouvre **le profil de ce joueur** (`/play/profile.html?id=<id>`).
+
+- **Statistiques** : joueur (parties, victoires, taux de victoire, points au total, meilleur score, score moyen, date de la dernière partie), devineur (mots trouvés, trouvés en premier, temps moyen), dessinateur (dessins devinés, points en dessinant).
+- **Mon compte** (seulement sur son propre profil) : modifier son pseudo, son e-mail ou son mot de passe (seuls les champs changés sont envoyés), et supprimer son compte (deux clics pour confirmer, puis retour à l'écran de connexion).
+- Pas de photo de profil : l'avatar est fait des initiales du pseudo, comme partout dans le jeu.
+
+Endpoints utilisés : `GET /users/me`, `GET /users/:id/stats`, `PATCH /users/me`, `DELETE /users/me`.
+
 ## Fichiers
 
 | Fichier              | Rôle                                                                                         |
@@ -63,6 +73,9 @@ Endpoints utilisés : `GET /users/leaderboard` (liste paginée avec `period` et 
 | `leaderboard.html`   | Le classement : filtres, podium, tendances, liste paginée                                    |
 | `leaderboard.js`     | Classement : appels à l'API, filtres, recherche, pagination                                  |
 | `leaderboard.css`    | Style propre au classement (le reste vient de `style.css` et `lobby.css`)                    |
+| `profile.html`       | Le profil : statistiques d'un joueur, et « Mon compte » sur son propre profil                |
+| `profile.js`         | Profil : appels à l'API, modifier et supprimer son compte                                    |
+| `profile.css`        | Style propre au profil (le reste vient de `style.css` et `lobby.css`)                        |
 | `logo.svg`           | Le logo de Devin'Art (aussi l'icône de l'onglet)                                             |
 | `../lib/game.js`     | La partie côté serveur : tours, mot tiré, propositions, points, résultats                    |
 | `../lib/realtime.js` | Serveur temps réel : relaie les messages aux joueurs de la même room                         |

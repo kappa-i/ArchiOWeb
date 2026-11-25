@@ -218,7 +218,7 @@ function createPodiumStep(player) {
 
   card.append(createAvatar(player.username, 'podium-avatar'));
 
-  const name = createElement('strong', 'podium-name', player.username);
+  const name = createProfileLink(player, 'podium-name');
   card.append(name);
 
   if (isMe(player)) {
@@ -358,7 +358,7 @@ function createRow(player) {
   const who = createElement('div', 'row-player');
   who.append(createAvatar(player.username, ''));
 
-  const name = createElement('span', 'row-name', player.username);
+  const name = createProfileLink(player, 'row-name');
   who.append(name);
   if (isMe(player)) {
     who.append(createElement('span', 'player-tag', 'Toi'));
@@ -449,6 +449,13 @@ function createElement(tag, className, text) {
   }
 
   return element;
+}
+
+// Le pseudo du joueur, en lien vers son profil
+function createProfileLink(player, className) {
+  const link = createElement('a', className, player.username);
+  link.href = `profile.html?id=${player.userId}`;
+  return link;
 }
 
 function createAvatar(username, className) {

@@ -73,6 +73,17 @@ body.lobby-page {
   margin: 0;
 }
 
+/* L'avatar et le pseudo mènent au profil */
+.me-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.me-link:hover .me-name {
+  text-decoration: underline;
+}
+
 .logout {
   padding: 8px 14px;
   border-radius: 999px;

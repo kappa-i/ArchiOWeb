@@ -73,6 +73,10 @@ router.patch(
       settings.turnDuration = body.turnDuration;
     }
 
+    if (body.difficulty !== undefined) {
+      settings.difficulty = body.difficulty;
+    }
+
     // D'abord les valeurs elles-mêmes (422 si hors limites)
     await settings.validate();
 
@@ -152,6 +156,7 @@ function formatRoom(room, host, settings) {
       maxPlayers: settings.maxPlayers,
       rounds: settings.rounds,
       turnDuration: settings.turnDuration,
+      difficulty: settings.difficulty,
     },
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,

@@ -29,6 +29,12 @@ const settingsSchema = new Schema(
       min: 30,
       max: 180,
     },
+    // Difficulté des mots tirés : « mixed » = tous les mots mélangés
+    difficulty: {
+      type: String,
+      default: 'mixed',
+      enum: ['mixed', 'easy', 'medium', 'hard'],
+    },
   },
   { timestamps: true },
 );

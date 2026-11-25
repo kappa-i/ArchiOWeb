@@ -32,9 +32,9 @@ app.use('/api-docs', docsRoutes);
 // Pages du jeu (salle d'attente, dessin), dans le dossier draw/
 app.use('/play', express.static('draw'));
 
-// Page d'accueil : redirige vers la documentation
+// Page d'accueil : redirige vers le menu du jeu (la documentation est sur /api-docs)
 app.get('/', (req, res) => {
-  res.redirect('/api-docs');
+  res.redirect('/play/lobby.html');
 });
 
 // Gestion des erreurs (toujours en dernier)

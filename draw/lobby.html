@@ -47,7 +47,9 @@
       <section class="screen" id="auth-screen" hidden>
         <div class="card glass auth-card">
           <h1>Prêt à dessiner ?</h1>
-          <p class="subtitle">Connecte-toi pour créer une room ou rejoindre tes amis.</p>
+          <p class="subtitle" id="auth-subtitle">
+            Connecte-toi pour créer une room ou rejoindre tes amis.
+          </p>
 
           <div class="tabs">
             <button class="tab" id="login-tab" aria-pressed="true">Connexion</button>
@@ -160,6 +162,16 @@
                 <button data-step="-1" aria-label="Tour plus court">−</button>
                 <output></output>
                 <button data-step="1" aria-label="Tour plus long">+</button>
+              </div>
+            </div>
+
+            <div class="difficulty-setting">
+              <span class="setting-label">Difficulté des mots</span>
+              <div class="choices">
+                <button data-difficulty="easy" aria-pressed="false">Facile</button>
+                <button data-difficulty="medium" aria-pressed="false">Moyen</button>
+                <button data-difficulty="hard" aria-pressed="false">Difficile</button>
+                <button data-difficulty="mixed" aria-pressed="false">Mélangé</button>
               </div>
             </div>
           </div>

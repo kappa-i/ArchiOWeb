@@ -34,6 +34,31 @@ body.lobby-page {
   display: inline;
 }
 
+/* En-tête : lien vers le classement (ou vers le menu), puis le compte */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lobby-header a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.lobby-header .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 10px 12px;
+  font-weight: 600;
+  color: var(--accent-dark);
+}
+
+.lobby-header .nav-link:hover {
+  background: #fff;
+}
+
 .me {
   display: flex;
   align-items: center;
@@ -591,6 +616,15 @@ body.lobby-page {
     gap: 18px;
     padding-right: 14px;
     padding-left: 14px;
+  }
+
+  /* Petit écran : le lien « Classement » devient juste l'icône du trophée */
+  .header-actions .nav-link {
+    padding: 10px;
+  }
+
+  .header-actions .nav-link span {
+    display: none;
   }
 
   .card {

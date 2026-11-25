@@ -37,6 +37,17 @@ Puis ouvrir http://localhost:3000 (la racine redirige vers `/play/lobby.html`) :
 
 Endpoints utilisés : `POST /users`, `POST /auth/login`, `GET /users/me`, `POST /rooms`, `GET /rooms/:code`, `PATCH /rooms/:code/settings`, `PATCH /rooms/:code`, `POST`, `GET`, `PATCH` et `DELETE /rooms/:code/participants`, `POST /rooms/:code/drawings/:id/guesses`.
 
+## Classement
+
+Le bouton 🏆 « Classement » de l'en-tête (ou « Voir le classement » à la fin d'une partie) ouvre `/play/leaderboard.html`. La page est publique : pas besoin d'être connecté (si on l'est, sa ligne est mise en avant avec « Toi » et le bouton « Me trouver »).
+
+- **Filtre par période** : depuis toujours, 30 jours, 7 jours ou 24 h (périodes glissantes).
+- **Podium** : les 3 premiers avec leurs points, victoires, parties, meilleur score et mots trouvés.
+- **Tendances** : 👑 qui est en tête et depuis quand, 🚀 la plus grosse progression en 24 h, 🔥 la plus longue série de victoires (à partir de 2).
+- **Liste** : 10 joueurs par page, recherche par pseudo (chaque joueur garde son vrai rang), badges ▲ / ▼ (places gagnées ou perdues en 24 h), « Nouveau » (pas classé il y a 24 h) et 🔥 (victoires d'affilée).
+
+Endpoints utilisés : `GET /users/leaderboard` (liste paginée avec `period` et `search`), `GET /users/leaderboard/highlights` (podium et tendances), `GET /users/me` (si connecté).
+
 ## Fichiers
 
 | Fichier              | Rôle                                                                                         |
@@ -49,6 +60,9 @@ Endpoints utilisés : `POST /users`, `POST /auth/login`, `GET /users/me`, `POST 
 | `lobby.html`         | La salle d'attente : connexion, créer / rejoindre une room, joueurs, réglages, lancer        |
 | `lobby.js`           | Salle d'attente : appels à l'API, rafraîchissement toutes les 2 secondes, compte à rebours   |
 | `lobby.css`          | Style propre à la salle d'attente (le reste vient de `style.css`)                            |
+| `leaderboard.html`   | Le classement : filtres, podium, tendances, liste paginée                                    |
+| `leaderboard.js`     | Classement : appels à l'API, filtres, recherche, pagination                                  |
+| `leaderboard.css`    | Style propre au classement (le reste vient de `style.css` et `lobby.css`)                    |
 | `logo.svg`           | Le logo de Devin'Art (aussi l'icône de l'onglet)                                             |
 | `../lib/game.js`     | La partie côté serveur : tours, mot tiré, propositions, points, résultats                    |
 | `../lib/realtime.js` | Serveur temps réel : relaie les messages aux joueurs de la même room                         |

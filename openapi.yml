@@ -197,7 +197,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
-        - name: limit
+        - name: pageSize
           in: query
           required: false
           description: Number of players per page, from 1 to 100.
@@ -237,6 +237,9 @@ paths:
                 invalidPage:
                   value:
                     message: page must be a positive integer
+                pageSizeTooLarge:
+                  value:
+                    message: pageSize must be at most 100
 
   /rooms:
     post:
@@ -846,7 +849,7 @@ components:
             page:
               type: integer
               example: 1
-            limit:
+            pageSize:
               type: integer
               example: 10
             totalItems:
@@ -857,7 +860,7 @@ components:
               example: 3
           required:
             - page
-            - limit
+            - pageSize
             - totalItems
             - totalPages
       required:

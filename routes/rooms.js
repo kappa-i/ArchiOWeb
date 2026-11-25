@@ -73,6 +73,15 @@ router.patch(
       settings.turnDuration = body.turnDuration;
     }
 
+    // D'abord les valeurs elles-mêmes (422 si hors limites)
+    await settings.validate();
+
+    // Puis le nombre de places : il ne peut pas être plus petit que le nombre de joueurs déjà là
+    const playersCount = await Participant.countDocuments({ room: req.room.id, excluded: false });
+    if (settings.maxPlayers < playersCount) {
+      throw createHttpError(409, `There are already ${playersCount} players in the room`);
+    }
+
     await settings.save();
 
     const host = await Host.findById(req.room.host);

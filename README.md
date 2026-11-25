@@ -56,6 +56,18 @@ npm run dev
 
 Puis ouvrir http://localhost:3000 (documentation de l'API).
 
+## Lancer les tests
+
+MongoDB doit tourner en local (sur `127.0.0.1:27017`), puis :
+
+```sh
+npm test
+```
+
+Les tests utilisent leur propre base, `archioweb-test`, vidée avant chaque test : la base de développement n'est pas touchée. La commande affiche aussi la couverture du code (au moins 75 % des lignes, sinon elle échoue).
+
+Sur GitHub, la CI (`.github/workflows/ci.yml`) lance les mêmes tests à chaque pull request, avec MongoDB 7.0 : la 8.0 ne démarre pas sur les machines de GitHub (bug [SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912)). Le code est compatible avec les deux versions.
+
 ## Tester le module de dessin
 
 Le dessin en temps réel se teste sans MongoDB ni compte :

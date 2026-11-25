@@ -1,8 +1,10 @@
 import supertest from 'supertest';
 
 import app from '../app.js';
+import Drawing from '../models/drawing.js';
 import Host from '../models/host.js';
 import Participant from '../models/participant.js';
+import Result from '../models/result.js';
 import Room from '../models/room.js';
 import Settings from '../models/settings.js';
 import {
@@ -11,6 +13,7 @@ import {
   connectToDatabase,
   createRoom,
   createUser,
+  createWord,
   disconnectFromDatabase,
   generateToken,
 } from './utils.js';
@@ -254,6 +257,52 @@ describe('DELETE /rooms/:code/participants/:id', () => {
 
     const deletedRoom = await Room.findById(room.id);
     expect(deletedRoom).toBe(null);
+  });
+
+  // Partie en cours à 2 joueurs, l'un quitte : la partie se termine, l'autre a son résultat
+  it('should end the game when only one player is left', async () => {
+    const room = await createRoom(hostUser, 'ABC123');
+    const participant = await addParticipant(room, player);
+    room.status = 'playing';
+    await room.save();
+    const token = generateToken(player);
+
+    const res = await supertest(app)
+      .delete(`/rooms/ABC123/participants/${participant.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(204);
+
+    const deletedRoom = await Room.findById(room.id);
+    expect(deletedRoom).toBe(null);
+
+    const result = await Result.findOne({ user: hostUser.id });
+    expect(result.rank).toBe(1);
+  });
+
+  // Le dernier joueur quitte une partie en cours : la room et ses dessins sont supprimés
+  it('should delete the drawings when the last player leaves a game', async () => {
+    const room = await createRoom(hostUser, 'ABC123');
+    const hostParticipant = await Participant.findOne({ room: room.id, user: hostUser.id });
+    room.status = 'playing';
+    await room.save();
+    const word = await createWord('chat');
+    await Drawing.create({
+      room: room.id,
+      participant: hostParticipant.id,
+      word: word.id,
+      roundNumber: 1,
+    });
+    const token = generateToken(hostUser);
+
+    const res = await supertest(app)
+      .delete(`/rooms/ABC123/participants/${hostParticipant.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(204);
+
+    const drawingsCount = await Drawing.countDocuments({ room: room.id });
+    expect(drawingsCount).toBe(0);
   });
 
   // On ne peut pas faire quitter quelqu'un d'autre

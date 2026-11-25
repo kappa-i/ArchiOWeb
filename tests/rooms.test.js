@@ -149,6 +149,24 @@ describe('PATCH /rooms/:code/settings', () => {
 
     expect(res.status).toBe(409);
   });
+
+  // 3 joueurs dans la room : on ne peut pas descendre à 2 places
+  it('should respond with 409 if maxPlayers is less than the number of players', async () => {
+    const user = await createUser();
+    const second = await createUser({ username: 'second', email: 'second@example.com' });
+    const third = await createUser({ username: 'third', email: 'third@example.com' });
+    const token = generateToken(user);
+    const room = await createRoom(user, 'ABC123');
+    await addParticipant(room, second);
+    await addParticipant(room, third);
+
+    const res = await supertest(app)
+      .patch('/rooms/ABC123/settings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ maxPlayers: 2 });
+
+    expect(res.status).toBe(409);
+  });
 });
 
 describe('PATCH /rooms/:code', () => {

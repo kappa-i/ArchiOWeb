@@ -138,6 +138,10 @@ paths:
           $ref: '#/components/responses/ValidationError'
     delete:
       summary: Delete the authenticated user.
+      description: >-
+        The user first leaves every room they are in (same rules as `DELETE /rooms/{code}/participants/{id}`:
+        the host role goes to the next player, and a room without players is deleted).
+        Then the account and the results of their games are deleted.
       tags:
         - users
       security:
@@ -338,6 +342,7 @@ paths:
       description: >-
         Only the host can do it, and only before the game has started.
         Only the fields sent in the body are modified.
+        `maxPlayers` cannot be less than the number of players already in the room.
       tags:
         - rooms
       security:
@@ -364,13 +369,19 @@ paths:
         404:
           $ref: '#/components/responses/RoomNotFound'
         409:
-          description: The game has already started.
+          description: >-
+            The game has already started, or `maxPlayers` is less than the number of players already in the room.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                message: The game has already started
+              examples:
+                started:
+                  value:
+                    message: The game has already started
+                tooManyPlayers:
+                  value:
+                    message: There are already 3 players in the room
         422:
           $ref: '#/components/responses/ValidationError'
 
@@ -503,6 +514,9 @@ paths:
         A player can only remove themselves.
         If the host leaves, the player who arrived the earliest becomes the new host.
         If the last player leaves, the room is deleted with its settings.
+        During a game, if less than 2 players are left, the game ends right away:
+        the remaining player gets their result, the players receive the `game-ended` message (WebSocket),
+        and the room is deleted with all its content (drawings, guesses).
       tags:
         - participants
       security:

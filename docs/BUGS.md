@@ -2,24 +2,23 @@
 
 Bugs et incohérences repérés en relisant le code, à corriger plus tard.
 
-## 1. Supprimer son compte casse les rooms où on joue
+## 1. ~~Supprimer son compte casse les rooms où on joue~~ — corrigé
 
 - **Où** : `routes/users.js` (`DELETE /users/me`)
-- **Problème** : on supprime le `User`, mais pas ses `Participant` ni son `Host`.
-- **Conséquence** : `GET /rooms/:code/participants` fait `populate('user')`, qui renvoie `null` pour ce joueur. `formatParticipant` plante sur `user.id` → **500** pour toute la room.
-- **Piste** : en supprimant le compte, quitter aussi ses rooms (même logique que `DELETE /rooms/:code/participants/:id`).
+- **Problème** : on supprimait le `User`, mais pas ses `Participant` ni son `Host`. `GET /rooms/:code/participants` plantait alors (**500**) pour toute la room.
+- **Correction** : avant de supprimer le compte, l'utilisateur quitte toutes ses rooms avec la même logique que `DELETE /rooms/:code/participants/:id` (fonction `removePlayer` dans `lib/rooms.js`).
 
-## 2. Quitter une partie en cours n'est pas géré
+## 2. ~~Quitter une partie en cours n'est pas géré~~ — corrigé
 
 - **Où** : `routes/participants.js` (`DELETE /rooms/:code/participants/:id`)
-- **Problème** : si le dernier joueur quitte une room `playing`, elle est supprimée sans fin de partie.
-- **Attendu** (`docs/INTENTION.md`, « Cycle de vie d'une room ») : calculer le récapitulatif et enregistrer un résultat par joueur avant de supprimer la room.
+- **Problème** : si le dernier joueur quittait une room `playing`, elle était supprimée sans fin de partie, et ses dessins et propositions restaient dans la base.
+- **Correction** : pendant une partie, s'il reste moins de 2 joueurs, la partie se termine tout de suite (`finishGame` dans `lib/game.js`) : résultat pour le joueur restant, message `game-ended`, puis la room est supprimée avec tout son contenu. Vaut aussi quand un joueur supprime son compte.
 
-## 3. `maxPlayers` peut descendre sous le nombre de joueurs
+## 3. ~~`maxPlayers` peut descendre sous le nombre de joueurs~~ — corrigé
 
 - **Où** : `routes/rooms.js` (`PATCH /rooms/:code/settings`)
-- **Problème** : avec 5 joueurs dans la room, l'hôte peut mettre `maxPlayers` à 2.
-- **Piste** : refuser (409) si la nouvelle valeur est plus petite que le nombre de joueurs.
+- **Problème** : avec 5 joueurs dans la room, l'hôte pouvait mettre `maxPlayers` à 2.
+- **Correction** : refusé avec **409** si la nouvelle valeur est plus petite que le nombre de joueurs (les valeurs hors limites restent en 422).
 
 ## 4. Exclusion possible pendant la partie
 
@@ -31,7 +30,13 @@ Bugs et incohérences repérés en relisant le code, à corriger plus tard.
 - **Où** : `routes/participants.js` (`POST /rooms/:code/participants`)
 - **Problème** : on compte les joueurs puis on crée le participant. Si deux joueurs rejoignent exactement en même temps, la room peut dépasser la limite.
 
-## 6. Documentation pas à jour
+## 6. ~~Documentation pas à jour~~ — corrigé
 
-- `README.md` parle de MongoDB 8 alors que la CI utilise la 7.0.
-- `docs/REQUIREMENTS.md` : presque rien n'est coché alors qu'une partie est faite (inscription, authentification, validation…).
+- `README.md` parlait seulement de MongoDB 8 alors que la CI utilise la 7.0 : nouvelle section « Lancer les tests » qui explique pourquoi (la 8.0 ne démarre pas sur les machines de GitHub).
+- `docs/REQUIREMENTS.md` : les cases sont cochées selon ce qui est fait.
+
+## 7. ~~« coeur » refusé pour le mot « cœur »~~ — corrigé
+
+- **Où** : `lib/game.js` (`simplify`, utilisé par `POST /rooms/:code/drawings/:id/guesses`)
+- **Problème** : « œ » n'est pas une lettre accentuée, `simplify` le gardait tel quel. Un joueur qui tapait `coeur`, `oeuf` ou `oeil` avait faux.
+- **Correction** : « œ » est remplacé par « oe » avant de comparer.

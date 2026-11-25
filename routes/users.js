@@ -3,8 +3,12 @@ import express from 'express';
 import mongoose from 'mongoose';
 
 import { createHttpError } from '../lib/errors.js';
+import { removePlayer } from '../lib/rooms.js';
 import { authenticate, loadCurrentUser } from '../middleware/auth.js';
+import Host from '../models/host.js';
+import Participant from '../models/participant.js';
 import Result from '../models/result.js';
+import Room from '../models/room.js';
 import User from '../models/user.js';
 
 const router = express.Router();
@@ -56,8 +60,21 @@ router.patch('/me', authenticate, loadCurrentUser, async (req, res) => {
   res.send(user);
 });
 
-// Supprimer son compte (et ses résultats de parties)
+// Supprimer son compte : il quitte d'abord toutes ses rooms, puis ses résultats sont supprimés
 router.delete('/me', authenticate, loadCurrentUser, async (req, res) => {
+  const participants = await Participant.find({ user: req.user.id });
+
+  for (const participant of participants) {
+    // Exclu : il ne joue déjà plus dans cette room, on supprime juste sa fiche
+    if (participant.excluded) {
+      await Participant.deleteOne({ _id: participant.id });
+    } else {
+      const room = await Room.findById(participant.room);
+      await removePlayer(room, participant);
+    }
+  }
+
+  await Host.deleteOne({ user: req.user.id });
   await Result.deleteMany({ user: req.user.id });
   await req.user.deleteOne();
 

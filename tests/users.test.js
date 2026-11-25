@@ -1,9 +1,14 @@
 import supertest from 'supertest';
 
 import app from '../app.js';
+import Host from '../models/host.js';
+import Participant from '../models/participant.js';
+import Room from '../models/room.js';
 import {
+  addParticipant,
   cleanUpDatabase,
   connectToDatabase,
+  createRoom,
   createUser,
   disconnectFromDatabase,
   generateToken,
@@ -146,6 +151,51 @@ describe('DELETE /users/me', () => {
     const res = await supertest(app).delete('/users/me').set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(204);
+  });
+
+  // L'hôte supprime son compte : il quitte sa room, et l'autre joueur devient l'hôte
+  it('should remove the user from their rooms', async () => {
+    const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
+    const bob = await createUser({ username: 'bob', email: 'bob@example.com' });
+    const room = await createRoom(alice);
+    await addParticipant(room, bob);
+    const token = generateToken(alice);
+
+    const res = await supertest(app).delete('/users/me').set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(204);
+
+    const aliceParticipant = await Participant.findOne({ user: alice.id });
+    expect(aliceParticipant).toBe(null);
+
+    const updatedRoom = await Room.findById(room.id);
+    const newHost = await Host.findById(updatedRoom.host);
+    expect(newHost.user.toString()).toBe(bob.id);
+  });
+
+  // Le dernier joueur supprime son compte : sa room est supprimée
+  it('should delete the room if the user was the last player', async () => {
+    const user = await createUser();
+    const room = await createRoom(user);
+    const token = generateToken(user);
+
+    const res = await supertest(app).delete('/users/me').set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(204);
+
+    const deletedRoom = await Room.findById(room.id);
+    expect(deletedRoom).toBe(null);
+  });
+
+  // Jeton valide, mais le compte a déjà été supprimé
+  it('should respond with 404 if the user no longer exists', async () => {
+    const user = await createUser();
+    const token = generateToken(user);
+    await user.deleteOne();
+
+    const res = await supertest(app).delete('/users/me').set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
   });
 
   // Pas de jeton : l'utilisateur n'est pas connecté

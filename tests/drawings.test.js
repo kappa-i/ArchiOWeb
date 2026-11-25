@@ -26,8 +26,8 @@ beforeAll(async () => {
 beforeEach(cleanUpDatabase);
 afterAll(disconnectFromDatabase);
 
-// Partie lancée dans la room ABC123 : alice dessine « éléphant », bob et carol devinent
-async function startTestGame() {
+// Partie lancée dans la room ABC123 : alice dessine le mot (« éléphant » par défaut), bob et carol devinent
+async function startTestGame(word = 'éléphant') {
   const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
   const bob = await createUser({ username: 'bob', email: 'bob@example.com' });
   const carol = await createUser({ username: 'carol', email: 'carol@example.com' });
@@ -35,7 +35,7 @@ async function startTestGame() {
   const room = await createRoom(alice);
   await addParticipant(room, bob);
   await addParticipant(room, carol);
-  await createWord('éléphant');
+  await createWord(word);
 
   room.status = 'playing';
   await room.save();
@@ -87,6 +87,16 @@ describe('POST /rooms/:code/drawings/:id/guesses', () => {
     const alicePlayer = await Participant.findOne({ user: game.alice.id });
     expect(bobPlayer.score).toBe(res.body.points);
     expect(alicePlayer.score).toBe(25);
+  });
+
+  // « coeur » est accepté pour le mot « cœur » (pas de touche « œ » sur le clavier)
+  it('should accept oe for the letter œ', async () => {
+    const game = await startTestGame('cœur');
+
+    const res = await postGuess(game, game.bob, 'coeur');
+
+    expect(res.status).toBe(201);
+    expect(res.body.isCorrect).toBe(true);
   });
 
   // Le dessinateur ne peut pas deviner son propre mot

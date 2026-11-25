@@ -86,6 +86,43 @@ describe('POST /rooms/:code/participants', () => {
     expect(res.body.message).toBe('The room is full');
   });
 
+  // Une seule place libre et deux joueurs qui rejoignent en même temps : un seul entre
+  it('should accept only one of two players joining the last place at the same time', async () => {
+    const room = await createRoom(hostUser, 'ABC123');
+    await Settings.updateOne({ room: room.id }, { maxPlayers: 2 });
+    const thirdUser = await createUser({ username: 'third', email: 'third@example.com' });
+
+    const responses = await Promise.all([
+      supertest(app)
+        .post('/rooms/ABC123/participants')
+        .set('Authorization', `Bearer ${generateToken(player)}`),
+      supertest(app)
+        .post('/rooms/ABC123/participants')
+        .set('Authorization', `Bearer ${generateToken(thirdUser)}`),
+    ]);
+
+    const statuses = [responses[0].status, responses[1].status];
+    expect(statuses).toContain(201);
+    expect(statuses).toContain(409);
+    expect(await Participant.countDocuments({ room: room.id })).toBe(2);
+  });
+
+  // Le joueur était dans une autre room : il la quitte en rejoignant la nouvelle
+  it('should leave the other rooms of the player', async () => {
+    const otherHost = await createUser({ username: 'other', email: 'other@example.com' });
+    const oldRoom = await createRoom(otherHost, 'OLD123');
+    await addParticipant(oldRoom, player);
+    await createRoom(hostUser, 'ABC123');
+    const token = generateToken(player);
+
+    const res = await supertest(app)
+      .post('/rooms/ABC123/participants')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(201);
+    expect(await Participant.findOne({ room: oldRoom.id, user: player.id })).toBe(null);
+  });
+
   // Partie déjà lancée : on ne peut plus rejoindre
   it('should respond with 409 if the game has started', async () => {
     const room = await createRoom(hostUser, 'ABC123');
@@ -164,6 +201,22 @@ describe('PATCH /rooms/:code/participants/:id', () => {
     expect(res.status).toBe(200);
     expect(res.body.excluded).toBe(true);
     expect(res.body.username).toBe('player');
+  });
+
+  // Partie déjà lancée : on ne peut plus exclure
+  it('should respond with 409 if the game has started', async () => {
+    const room = await createRoom(hostUser, 'ABC123');
+    const participant = await addParticipant(room, player);
+    await Room.updateOne({ _id: room.id }, { status: 'playing' });
+    const token = generateToken(hostUser);
+
+    const res = await supertest(app)
+      .patch(`/rooms/ABC123/participants/${participant.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ excluded: true });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toBe('The game has already started');
   });
 
   // Un joueur qui n'est pas l'hôte ne peut pas exclure

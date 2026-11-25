@@ -1,6 +1,7 @@
 import supertest from 'supertest';
 
 import app from '../app.js';
+import Participant from '../models/participant.js';
 import Room from '../models/room.js';
 import {
   addParticipant,
@@ -36,6 +37,20 @@ describe('POST /rooms', () => {
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
     });
+  });
+
+  // L'utilisateur jouait dans une autre room : il la quitte en créant la nouvelle
+  it('should leave the other rooms of the user', async () => {
+    const user = await createUser();
+    const otherHost = await createUser({ username: 'other', email: 'other@example.com' });
+    const oldRoom = await createRoom(otherHost, 'OLD123');
+    await addParticipant(oldRoom, user);
+    const token = generateToken(user);
+
+    const res = await supertest(app).post('/rooms').set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(201);
+    expect(await Participant.findOne({ room: oldRoom.id, user: user.id })).toBe(null);
   });
 
   // Pas de jeton : l'utilisateur n'est pas connecté

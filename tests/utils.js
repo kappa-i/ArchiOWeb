@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 
 import { databaseUrl, jwtSecret } from '../config.js';
 import { stopAllGames } from '../lib/game.js';
+import { cancelAllRemovals } from '../lib/realtime.js';
 import Drawing from '../models/drawing.js';
 import Guess from '../models/guess.js';
 import Host from '../models/host.js';
@@ -23,16 +24,18 @@ export async function connectToDatabase() {
 
 export async function disconnectFromDatabase() {
   stopAllGames();
+  cancelAllRemovals();
   await mongoose.disconnect();
 }
 
-// Vide la base de test et arrête les parties lancées par le test précédent
+// Vide la base de test, arrête les parties lancées par le test précédent et les retraits de joueurs prévus
 export async function cleanUpDatabase() {
   if (!mongoose.connection.name.endsWith('-test')) {
     throw new Error(`Refusing to clean up database ${mongoose.connection.name}`);
   }
 
   stopAllGames();
+  cancelAllRemovals();
 
   await User.deleteMany();
   await Host.deleteMany();

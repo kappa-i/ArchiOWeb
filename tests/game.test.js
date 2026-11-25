@@ -2,6 +2,8 @@ import supertest from 'supertest';
 
 import app from '../app.js';
 import { startGame, timings } from '../lib/game.js';
+import { absence } from '../lib/realtime.js';
+import { cleanUpRoomsAtStartup } from '../lib/rooms.js';
 import Drawing from '../models/drawing.js';
 import Participant from '../models/participant.js';
 import Result from '../models/result.js';
@@ -110,5 +112,77 @@ describe('Word difficulty', () => {
 
     const drawing = await waitFor(() => Drawing.findOne({ room: room.id }));
     expect(drawing.word.toString()).toBe(hardWord.id);
+  });
+});
+
+describe('Players who leave', () => {
+  // Alice dessine et quitte la partie : son tour se termine tout de suite, et c'est à Bob de dessiner
+  it('should end the turn when the drawer leaves', async () => {
+    const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
+    const bob = await createUser({ username: 'bob', email: 'bob@example.com' });
+    const carol = await createUser({ username: 'carol', email: 'carol@example.com' });
+    const room = await createRoom(alice);
+    const bobPlayer = await addParticipant(room, bob);
+    await addParticipant(room, carol);
+    const alicePlayer = await Participant.findOne({ user: alice.id });
+    await Settings.updateOne({ room: room.id }, { rounds: 1 });
+    await createWord('chat');
+    await createWord('chien');
+    await createWord('maison');
+    room.status = 'playing';
+    await room.save();
+    await startGame(room);
+    await waitFor(() => Drawing.findOne({ room: room.id, participant: alicePlayer.id }));
+
+    const res = await supertest(app)
+      .delete(`/rooms/${room.code}/participants/${alicePlayer.id}`)
+      .set('Authorization', `Bearer ${generateToken(alice)}`);
+
+    expect(res.status).toBe(204);
+    // Le tour de Bob commence sans attendre la fin du temps d'Alice (80 secondes)
+    const bobDrawing = await waitFor(() =>
+      Drawing.findOne({ room: room.id, participant: bobPlayer.id }),
+    );
+    expect(bobDrawing).not.toBe(null);
+  });
+});
+
+describe('Server restart', () => {
+  const normalDelay = absence.delay;
+
+  afterEach(() => {
+    absence.delay = normalDelay;
+  });
+
+  // La partie s'est arrêtée avec l'ancien serveur : elle se termine (un résultat par joueur, room supprimée)
+  it('should finish the games that were being played', async () => {
+    const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
+    const bob = await createUser({ username: 'bob', email: 'bob@example.com' });
+    const room = await createRoom(alice);
+    await addParticipant(room, bob);
+    await Room.updateOne({ _id: room.id }, { status: 'playing' });
+
+    await cleanUpRoomsAtStartup();
+
+    expect(await Room.findById(room.id)).toBe(null);
+    expect(await Result.countDocuments()).toBe(2);
+  });
+
+  // Personne ne revient dans la salle d'attente : ses joueurs sont retirés et la room est supprimée
+  it('should remove the players of the waiting rooms who do not come back', async () => {
+    absence.delay = 50;
+    const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
+    const room = await createRoom(alice);
+
+    await cleanUpRoomsAtStartup();
+
+    await waitFor(async () => {
+      const deletedRoom = await Room.findById(room.id);
+      if (deletedRoom === null) {
+        return true;
+      }
+      return null;
+    });
+    expect(await Participant.countDocuments({ room: room.id })).toBe(0);
   });
 });

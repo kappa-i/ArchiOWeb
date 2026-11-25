@@ -1,7 +1,8 @@
 import express from 'express';
 
 import { createHttpError } from '../lib/errors.js';
-import { findPlayersInOrder, removePlayer } from '../lib/rooms.js';
+import { broadcast } from '../lib/realtime.js';
+import { findPlayersInOrder, leaveAllRooms, removePlayer } from '../lib/rooms.js';
 import { authenticate, loadCurrentUser } from '../middleware/auth.js';
 import {
   loadParticipantFromParams,
@@ -16,7 +17,8 @@ import User from '../models/user.js';
 // mergeParams : permet de lire le :code de la room, qui est dans l'URL définie dans app.js
 const router = express.Router({ mergeParams: true });
 
-// Rejoindre une room avec son code
+// Rejoindre une room avec son code.
+// On ne joue que dans une room à la fois : il quitte d'abord les autres.
 router.post('/', authenticate, loadCurrentUser, loadRoomFromParams, async (req, res) => {
   const existingParticipant = await Participant.findOne({
     room: req.room.id,
@@ -42,10 +44,29 @@ router.post('/', authenticate, loadCurrentUser, loadRoomFromParams, async (req, 
     throw createHttpError(409, 'The room is full');
   }
 
+  await leaveAllRooms(req.user.id);
+
   const participant = await Participant.create({
     room: req.room.id,
     user: req.user.id,
   });
+
+  // Deux joueurs ont pu prendre la dernière place en même temps : le dernier arrivé repart
+  const players = await findPlayersInOrder(req.room);
+  let position = 0;
+  for (let i = 0; i < players.length; i++) {
+    if (players[i].id === participant.id) {
+      position = i;
+    }
+  }
+
+  if (position >= settings.maxPlayers) {
+    await Participant.deleteOne({ _id: participant.id });
+    throw createHttpError(409, 'The room is full');
+  }
+
+  // Les autres joueurs voient le nouveau joueur arriver
+  broadcast(req.room.code, { type: 'room-updated' });
 
   res
     .status(201)
@@ -83,8 +104,16 @@ router.patch(
       throw createHttpError(403, 'The host cannot exclude themselves');
     }
 
+    // Pendant la partie, on ne peut plus exclure (les tours sont déjà prévus)
+    if (req.room.status !== 'waiting') {
+      throw createHttpError(409, 'The game has already started');
+    }
+
     req.participant.excluded = true;
     await req.participant.save();
+
+    // Le joueur exclu quitte la salle d'attente, les autres le voient partir
+    broadcast(req.room.code, { type: 'room-updated' });
 
     const user = await User.findById(req.participant.user);
 

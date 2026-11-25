@@ -32,7 +32,7 @@ Puis ouvrir http://localhost:3000 (la racine redirige vers `/play/lobby.html`) :
 
 1. Se connecter ou créer un compte. Un nouvel onglet reprend le dernier compte connecté sur le navigateur (pas besoin de se reconnecter). Ensuite, chaque onglet garde son propre compte : dans un 2e onglet, « Déconnexion » puis connexion avec un autre compte permet de jouer un 2e joueur.
 2. Créer une room (on en devient l'hôte) ou rejoindre celle d'un ami avec son code. Le lien 🔗 (`lobby.html?code=K7PX2M`) fait entrer directement dans la salle d'attente de la room, après s'être connecté si besoin.
-3. Dans la salle d'attente : la liste des joueurs se met à jour toutes les 2 secondes. L'hôte change les réglages (joueurs max, manches, durée d'un tour, difficulté des mots), exclut un joueur (deux clics sur la croix) et lance la partie à partir de 2 joueurs.
+3. Dans la salle d'attente : la liste des joueurs et les réglages se mettent à jour en direct (message `room-updated`, et par sécurité toutes les 10 secondes). L'hôte change les réglages (joueurs max, manches, durée d'un tour, difficulté des mots), exclut un joueur (deux clics sur la croix) et lance la partie à partir de 2 joueurs.
 4. Partie lancée : compte à rebours chez tout le monde, puis direction l'écran de dessin de la room (`/play/`), connecté avec le compte de la salle d'attente. Le serveur fait jouer les tours (voir « Déroulement d'une partie ») ; à la fin, un écran de classement propose de revenir au menu.
 
 Endpoints utilisés : `POST /users`, `POST /auth/login`, `GET /users/me`, `POST /rooms`, `GET /rooms/:code`, `PATCH /rooms/:code/settings`, `PATCH /rooms/:code`, `POST`, `GET`, `PATCH` et `DELETE /rooms/:code/participants`, `POST /rooms/:code/drawings/:id/guesses`.
@@ -68,7 +68,7 @@ Endpoints utilisés : `GET /users/me`, `GET /users/:id/stats`, `PATCH /users/me`
 | `index.html`         | La page                                                                                      |
 | `style.css`          | Le style (responsive : ordinateur, tablette, téléphone en portrait et en paysage)            |
 | `lobby.html`         | La salle d'attente : connexion, créer / rejoindre une room, joueurs, réglages, lancer        |
-| `lobby.js`           | Salle d'attente : appels à l'API, rafraîchissement toutes les 2 secondes, compte à rebours   |
+| `lobby.js`           | Salle d'attente : appels à l'API, mise à jour en direct, compte à rebours                    |
 | `lobby.css`          | Style propre à la salle d'attente (le reste vient de `style.css`)                            |
 | `leaderboard.html`   | Le classement : filtres, podium, tendances, liste paginée                                    |
 | `leaderboard.js`     | Classement : appels à l'API, filtres, recherche, pagination                                  |
@@ -114,17 +114,18 @@ Les opérations (`op.kind`) :
 
 ### Envoyés par le serveur
 
-| Message         | Contenu                                                                                           | À qui                    | Quand                                                        |
-| --------------- | ------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------ |
-| `history`       | `messages` : tous les messages du dessin                                                          | Le joueur qui arrive     | En arrivant dans la room, et au début de chaque tour         |
-| `presence`      | `players` : pseudos des joueurs connectés                                                         | Toute la room            | Quelqu'un arrive ou part                                     |
-| `round-started` | `drawingId`, `drawer` (pseudo), `round`, `totalRounds`, `duration` (secondes), `hint` (`____-__`) | Toute la room            | Début d'un tour (aussi au joueur qui arrive pendant le tour) |
-| `word-to-draw`  | `word`                                                                                            | Le dessinateur seulement | Début de son tour                                            |
-| `guess`         | `player`, `text`                                                                                  | Toute la room            | Une proposition fausse (affichée dans le chat)               |
-| `word-found`    | `player`, `points` (sans le mot)                                                                  | Toute la room            | Un joueur a trouvé                                           |
-| `round-ended`   | `word`, `scores` : `[{ username, score }]` du meilleur au moins bon                               | Toute la room            | Temps écoulé ou tout le monde a trouvé                       |
-| `game-ended`    | `ranking` : `[{ rank, username, score }]`                                                         | Toute la room            | Fin de la partie (la room est ensuite supprimée)             |
-| `game-error`    | —                                                                                                 | Toute la room            | La partie s'est arrêtée à cause d'une erreur                 |
+| Message         | Contenu                                                                                           | À qui                    | Quand                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `history`       | `messages` : tous les messages du dessin                                                          | Le joueur qui arrive     | En arrivant dans la room, et au début de chaque tour                                                                                  |
+| `presence`      | `players` : pseudos des joueurs connectés                                                         | Toute la room            | Quelqu'un arrive ou part                                                                                                              |
+| `round-started` | `drawingId`, `drawer` (pseudo), `round`, `totalRounds`, `duration` (secondes), `hint` (`____-__`) | Toute la room            | Début d'un tour (aussi au joueur qui arrive pendant le tour)                                                                          |
+| `word-to-draw`  | `word`                                                                                            | Le dessinateur seulement | Début de son tour                                                                                                                     |
+| `guess`         | `player`, `text`                                                                                  | Toute la room            | Une proposition fausse (affichée dans le chat)                                                                                        |
+| `word-found`    | `player`, `points` (sans le mot)                                                                  | Toute la room            | Un joueur a trouvé                                                                                                                    |
+| `round-ended`   | `word`, `scores` : `[{ username, score }]` du meilleur au moins bon                               | Toute la room            | Temps écoulé ou tout le monde a trouvé                                                                                                |
+| `game-ended`    | `ranking` : `[{ rank, username, score }]`                                                         | Toute la room            | Fin de la partie (la room est ensuite supprimée)                                                                                      |
+| `game-error`    | —                                                                                                 | Toute la room            | La partie s'est arrêtée à cause d'une erreur                                                                                          |
+| `room-updated`  | —                                                                                                 | Toute la room            | La salle d'attente a changé : la page redemande la room à l'API (joueur arrivé, parti ou exclu, nouvel hôte, réglages, partie lancée) |
 
 ## Déroulement d'une partie (`lib/game.js`)
 
@@ -136,4 +137,12 @@ Les opérations (`op.kind`) :
 6. Le tour se termine quand le temps est écoulé ou que tout le monde a trouvé : le dessin est enregistré (`Drawing.data`), le mot est révélé, pause de 4 secondes, tour suivant.
 7. Fin de partie : un résultat par joueur (`Result`, utilisé par `GET /users/:id/stats`), le classement est envoyé, puis la room et tout son contenu sont supprimés.
 
-Si un joueur quitte la room (ou supprime son compte) et qu'il reste moins de 2 joueurs, la partie se termine tout de suite : le joueur restant a son résultat, puis la room est supprimée avec tout son contenu.
+Si un joueur quitte la room (ou supprime son compte) et qu'il reste moins de 2 joueurs, la partie se termine tout de suite : le joueur restant a son résultat, puis la room est supprimée avec tout son contenu. Si c'était le dessinateur, le tour se termine tout de suite.
+
+## Joueurs partis sans prévenir
+
+La salle d'attente et l'écran de dessin restent connectés au temps réel. Quand la **dernière page** d'un joueur se ferme (onglet fermé, téléphone verrouillé, connexion perdue) et qu'il ne revient pas dans les **30 secondes**, le serveur le retire de la room, comme s'il avait cliqué « Quitter ». Recharger la page ou passer de la salle d'attente à l'écran de dessin prend moins de 30 secondes : le joueur n'est pas retiré.
+
+Un joueur retiré qui revient voit « Cette partie est terminée, ou tu n'en fais plus partie. » sur l'écran de dessin, ou retourne à l'accueil depuis la salle d'attente.
+
+On ne joue que dans **une room à la fois** : créer ou rejoindre une room fait quitter les autres.

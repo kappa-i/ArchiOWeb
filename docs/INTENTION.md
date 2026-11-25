@@ -200,6 +200,8 @@ Principes :
 - **Rejoindre une room** se fait uniquement avec le **code** de la room (pas de liste publique pour l'instant).
 - **Inviter** des joueurs = l'hôte leur partage le code de la room (rien de plus côté API).
 - Un joueur peut **quitter** la room de lui-même.
+- Un joueur ne joue que dans **une room à la fois** : créer ou rejoindre une room le fait quitter les autres.
+- Un joueur qui **ferme la page** (salle d'attente ou partie) et ne revient pas dans les 30 secondes est retiré de la room, comme s'il l'avait quittée.
 - Un joueur **exclu** par l'hôte ne peut **pas revenir** dans la room.
 - L'**hôte** est aussi un joueur : il dessine et devine comme les autres.
 - Les **mots** forment une liste fixe chargée au départ : personne ne peut les modifier via l'API (pas de rôle administrateur).
@@ -294,23 +296,21 @@ Les propositions ne passent pas par le WebSocket mais par `POST /rooms/:code/dra
 
 ### Messages envoyés par le serveur
 
-Faits : `history`, `presence`, `round-started`, `word-to-draw`, `guess`, `word-found`, `round-ended`, `game-ended`, `game-error`. Pas encore faits : `player-joined`, `player-excluded`, `player-left`, `host-changed`, `settings-updated`, `game-started` (la salle d'attente se rafraîchit toutes les 2 secondes à la place).
+Tous faits. Pour la salle d'attente, un seul message, `room-updated` : la page redemande alors la room et ses joueurs à l'API (plus simple que six messages différents, et la page affiche elle-même « X a rejoint », « X est parti », « Tu es maintenant l'hôte »…).
 
-| Message            | Envoyé à                 | Quand                                                                |
-| ------------------ | ------------------------ | -------------------------------------------------------------------- |
-| `player-joined`    | Toute la room            | Un joueur rejoint la room                                            |
-| `player-excluded`  | Toute la room            | L'hôte exclut un joueur                                              |
-| `player-left`      | Toute la room            | Un joueur quitte la room                                             |
-| `host-changed`     | Toute la room            | L'hôte est parti : nom du nouvel hôte                                |
-| `settings-updated` | Toute la room            | L'hôte modifie les paramètres                                        |
-| `game-started`     | Toute la room            | L'hôte lance la partie                                               |
-| `round-started`    | Toute la room            | Début d'un tour : qui dessine, durée (sans le mot)                   |
-| `word-to-draw`     | Le dessinateur seulement | Début de son tour : le mot à dessiner                                |
-| `op`, `points`…    | Toute la room sauf lui   | Le dessin du dessinateur, relayé tel quel                            |
-| `guess`            | Toute la room            | Une proposition fausse (texte affiché dans le chat)                  |
-| `word-found`       | Toute la room            | Un joueur a trouvé (son nom et ses points, **sans** le mot)          |
-| `round-ended`      | Toute la room            | Fin du tour : le mot est révélé, scores mis à jour                   |
-| `game-ended`       | Toute la room            | Fin de la partie : récapitulatif (classement, points, mots trouvés…) |
+| Message         | Envoyé à                 | Quand                                                                                            |
+| --------------- | ------------------------ | ------------------------------------------------------------------------------------------------ |
+| `room-updated`  | Toute la room            | Un joueur rejoint, part ou est exclu, l'hôte change, les réglages changent, la partie est lancée |
+| `history`       | Le joueur qui arrive     | Le dessin déjà commencé                                                                          |
+| `presence`      | Toute la room            | Les pseudos des joueurs connectés                                                                |
+| `round-started` | Toute la room            | Début d'un tour : qui dessine, durée (sans le mot)                                               |
+| `word-to-draw`  | Le dessinateur seulement | Début de son tour : le mot à dessiner                                                            |
+| `op`, `points`… | Toute la room sauf lui   | Le dessin du dessinateur, relayé tel quel                                                        |
+| `guess`         | Toute la room            | Une proposition fausse (texte affiché dans le chat)                                              |
+| `word-found`    | Toute la room            | Un joueur a trouvé (son nom et ses points, **sans** le mot)                                      |
+| `round-ended`   | Toute la room            | Fin du tour : le mot est révélé, scores mis à jour                                               |
+| `game-ended`    | Toute la room            | Fin de la partie : récapitulatif (classement, points, mots trouvés…)                             |
+| `game-error`    | Toute la room            | La partie s'est arrêtée à cause d'une erreur                                                     |
 
 ## Fonctionnalités mobiles (optionnel)
 

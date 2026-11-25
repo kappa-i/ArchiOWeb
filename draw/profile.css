@@ -1,0 +1,137 @@
+/* ==========================================================================
+   Devin'Art · profil
+   (les couleurs, le fond, les cartes, les champs et les boutons viennent de style.css et lobby.css)
+   ========================================================================== */
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profile-error {
+  padding: 22px;
+  text-align: center;
+}
+
+/* --- En-tête : avatar, pseudo, dernière partie ---------------------------- */
+
+.profile-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.profile-avatar {
+  width: 96px;
+  height: 96px;
+  margin: 0 0 10px;
+  border-width: 4px;
+  font-size: 32px;
+}
+
+.profile-head .home-title {
+  overflow-wrap: anywhere;
+}
+
+/* --- Statistiques : « Joueur » sur toute la largeur, puis 2 cartes --------- */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.stat-card {
+  padding: 20px;
+}
+
+.stat-card.is-wide {
+  grid-column: span 2;
+}
+
+.stat-card h2 {
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+/* Une case : la valeur en grand au-dessus, le nom en petit dessous */
+.stat-tiles div {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.stat-tiles dd {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+.stat-tiles dt {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* --- Mon compte ------------------------------------------------------------ */
+
+.account-card {
+  width: min(100%, 520px);
+  margin: 0 auto;
+}
+
+.account-card h2 {
+  margin-bottom: 16px;
+}
+
+.danger-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1.5px solid rgba(124, 92, 255, 0.12);
+}
+
+.danger-zone .subtitle {
+  margin: 0;
+  font-size: 14px;
+}
+
+.delete-button {
+  color: var(--red);
+}
+
+.delete-button.is-armed {
+  color: #fff;
+  background: var(--red);
+}
+
+.delete-button.is-armed:hover {
+  color: #fff;
+}
+
+/* --- Téléphone : les cartes s'empilent ------------------------------------ */
+
+@media (max-width: 720px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card.is-wide {
+    grid-column: auto;
+  }
+}

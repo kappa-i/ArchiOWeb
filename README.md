@@ -80,7 +80,7 @@ Puis ouvrir http://localhost:3001 dans 2 onglets : ce qu'on dessine dans l'un ap
 
 ## Jouer (salle d'attente + dessin)
 
-Tout passe par l'API : lancer `npm run dev`, puis ouvrir http://localhost:3000 dans 2 onglets, avec un compte différent dans chacun (un nouvel onglet reprend le dernier compte connecté : cliquer « Déconnexion » dans le 2e onglet, puis se connecter avec l'autre compte). Quand l'hôte lance la partie, tout le monde arrive sur l'écran de dessin de la room, en temps réel. Le classement des joueurs (podium, filtres, pagination) est sur http://localhost:3000/play/leaderboard.html. Détails dans [`draw/README.md`](draw/README.md).
+Tout passe par l'API : lancer `npm run dev`, puis ouvrir http://localhost:3000 dans 2 onglets, avec un compte différent dans chacun (un nouvel onglet reprend le dernier compte connecté : cliquer « Déconnexion » dans le 2e onglet, puis se connecter avec l'autre compte). Quand l'hôte lance la partie, tout le monde arrive sur l'écran de dessin de la room, en temps réel. Le classement des joueurs (podium, filtres, pagination) est sur http://localhost:3000/play/leaderboard.html, et chaque joueur a son profil (statistiques, modifier ou supprimer son compte). Détails dans [`draw/README.md`](draw/README.md).
 
 ## Organisation
 

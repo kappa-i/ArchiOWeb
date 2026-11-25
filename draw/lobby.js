@@ -1,6 +1,8 @@
 // Salle d'attente de Devin'Art : se connecter, créer ou rejoindre une room, attendre les joueurs, lancer la partie.
 // Toutes les données viennent de l'API : la page est servie par l'API elle-même (/play/lobby.html).
 
+import { connect } from './network.js';
+
 // ---------------------------------------------------------------------------
 // Réglages
 // ---------------------------------------------------------------------------
@@ -8,8 +10,9 @@
 // Écran de dessin, servi par l'API comme cette page
 const DRAW_URL = '/play/';
 
-// Le serveur n'envoie pas encore d'événements en temps réel : on redemande la room toutes les 2 secondes
-const REFRESH_DELAY = 2000;
+// Le serveur prévient la salle d'attente en temps réel (message « room-updated »).
+// On redemande aussi la room toutes les 10 secondes, au cas où la connexion temps réel serait coupée.
+const REFRESH_DELAY = 10000;
 
 // Limites des réglages, les mêmes que dans models/settings.js
 const SETTINGS_LIMITS = {
@@ -101,6 +104,7 @@ let me = null; // l'utilisateur connecté (GET /users/me)
 let room = null; // la room affichée (GET /rooms/:code)
 let players = []; // ses joueurs (GET /rooms/:code/participants)
 let refreshTimer = null;
+let roomSocket = null; // connexion temps réel à la salle d'attente (voir openRoomSocket)
 let isSignup = false;
 let isSavingSettings = false;
 let isStarting = false;
@@ -388,6 +392,7 @@ async function joinRoom(code) {
 
 // Affiche la salle d'attente de cette room, puis la rafraîchit régulièrement
 async function openRoom(code) {
+  stopRefresh();
   sessionStorage.setItem('roomCode', code);
   room = null;
   players = [];
@@ -399,6 +404,30 @@ async function openRoom(code) {
 
   showScreen(roomScreen);
   scheduleRefresh(code);
+  openRoomSocket(code);
+}
+
+// Connexion temps réel à la room : le serveur prévient dès que quelque chose change (« room-updated »).
+// Elle dit aussi au serveur que le joueur est toujours là : s'il ferme la page sans revenir, il est retiré.
+function openRoomSocket(code) {
+  let protocol = 'ws:';
+  if (location.protocol === 'https:') {
+    protocol = 'wss:';
+  }
+
+  const url = `${protocol}//${location.host}/ws?room=${code}&token=${encodeURIComponent(token)}`;
+
+  roomSocket = connect(
+    url,
+    (message) => {
+      if (message.type === 'room-updated') {
+        loadRoom(code);
+      }
+    },
+    () => {},
+    // Connexion refusée : on n'est plus dans la room (exclu, room supprimée…), loadRoom l'affiche
+    () => loadRoom(code),
+  );
 }
 
 function scheduleRefresh(code) {
@@ -410,9 +439,15 @@ function scheduleRefresh(code) {
   }, REFRESH_DELAY);
 }
 
+// Arrête de suivre la room (rafraîchissement et connexion temps réel)
 function stopRefresh() {
   clearTimeout(refreshTimer);
   refreshTimer = null;
+
+  if (roomSocket) {
+    roomSocket.close();
+    roomSocket = null;
+  }
 }
 
 // Demande la room et ses joueurs à l'API. Renvoie false si on n'est plus dans la room.

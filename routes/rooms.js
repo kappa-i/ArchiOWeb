@@ -2,6 +2,8 @@ import express from 'express';
 
 import { createHttpError } from '../lib/errors.js';
 import { startGame } from '../lib/game.js';
+import { broadcast } from '../lib/realtime.js';
+import { leaveAllRooms } from '../lib/rooms.js';
 import { authenticate, loadCurrentUser } from '../middleware/auth.js';
 import { loadRoomFromParams, requireRoomHost, requireRoomPlayer } from '../middleware/rooms.js';
 import Host from '../models/host.js';
@@ -11,8 +13,11 @@ import Settings from '../models/settings.js';
 
 const router = express.Router();
 
-// Créer une room : l'utilisateur connecté en devient l'hôte
+// Créer une room : l'utilisateur connecté en devient l'hôte.
+// On ne joue que dans une room à la fois : il quitte d'abord les autres.
 router.post('/', authenticate, loadCurrentUser, async (req, res) => {
+  await leaveAllRooms(req.user.id);
+
   let host = await Host.findOne({ user: req.user.id });
   if (!host) {
     host = await Host.create({ user: req.user.id });
@@ -88,6 +93,9 @@ router.patch(
 
     await settings.save();
 
+    // Les autres joueurs voient les nouveaux réglages
+    broadcast(req.room.code, { type: 'room-updated' });
+
     const host = await Host.findById(req.room.host);
 
     res.send(formatRoom(req.room, host, settings));
@@ -116,6 +124,9 @@ router.patch('/:code', authenticate, loadRoomFromParams, requireRoomHost, async 
   req.room.status = 'playing';
   await req.room.save();
   await startGame(req.room);
+
+  // Les autres joueurs partent aussi vers l'écran de dessin
+  broadcast(req.room.code, { type: 'room-updated' });
 
   const host = await Host.findById(req.room.host);
   const settings = await Settings.findOne({ room: req.room.id });

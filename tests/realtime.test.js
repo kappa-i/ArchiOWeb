@@ -1,15 +1,22 @@
 import http from 'http';
+import supertest from 'supertest';
 import WebSocket from 'ws';
 
+import app from '../app.js';
 import { jwtSecret } from '../config.js';
-import { attachRealtime, canDraw, setCurrentRound } from '../lib/realtime.js';
+import { absence, attachRealtime, canDraw, setCurrentRound } from '../lib/realtime.js';
+import Host from '../models/host.js';
+import Participant from '../models/participant.js';
+import Room from '../models/room.js';
 import {
+  addParticipant,
   cleanUpDatabase,
   connectToDatabase,
   createRoom,
   createUser,
   disconnectFromDatabase,
   generateToken,
+  waitFor,
 } from './utils.js';
 
 // Deux petits serveurs sur des ports libres :
@@ -17,6 +24,8 @@ import {
 // - apiUrl : comme l'API, il faut un jeton et jouer dans la room
 let testServer;
 let apiServer;
+let testWss;
+let apiWss;
 let testUrl;
 let apiUrl;
 const sockets = [];
@@ -25,12 +34,12 @@ beforeAll(async () => {
   await connectToDatabase();
 
   testServer = http.createServer();
-  attachRealtime(testServer);
+  testWss = attachRealtime(testServer);
   await new Promise((resolve) => testServer.listen(0, resolve));
   testUrl = `ws://127.0.0.1:${testServer.address().port}/ws`;
 
   apiServer = http.createServer();
-  attachRealtime(apiServer, jwtSecret);
+  apiWss = attachRealtime(apiServer, jwtSecret);
   await new Promise((resolve) => apiServer.listen(0, resolve));
   apiUrl = `ws://127.0.0.1:${apiServer.address().port}/ws`;
 });
@@ -45,7 +54,17 @@ afterEach(() => {
   sockets.length = 0;
 });
 
+// Ferme toutes les connexions côté serveur avant de se déconnecter de la base
+// (disconnectFromDatabase annule ensuite les retraits de joueurs qu'elles ont prévus)
 afterAll(async () => {
+  for (const client of testWss.clients) {
+    client.terminate();
+  }
+  for (const client of apiWss.clients) {
+    client.terminate();
+  }
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
   testServer.closeAllConnections();
   apiServer.closeAllConnections();
   await new Promise((resolve) => testServer.close(resolve));
@@ -202,6 +221,72 @@ describe('Turns', () => {
   });
 });
 
+describe('Absent players', () => {
+  const normalDelay = absence.delay;
+
+  afterEach(() => {
+    absence.delay = normalDelay;
+  });
+
+  // Alice (l'hôte) ferme sa page et ne revient pas : elle est retirée, Bob devient l'hôte
+  it('should remove a player who closed their page and did not come back', async () => {
+    absence.delay = 50;
+    const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
+    const bob = await createUser({ username: 'bob', email: 'bob@example.com' });
+    const room = await createRoom(alice, 'ROOM30');
+    await addParticipant(room, bob);
+    const socket = await openSocket(`${apiUrl}?room=ROOM30&token=${generateToken(alice)}`);
+    await waitForMessage(socket, 'presence');
+
+    await closeSocket(socket);
+
+    await waitFor(async () => {
+      const participant = await Participant.findOne({ user: alice.id });
+      if (participant === null) {
+        return true;
+      }
+      return null;
+    });
+    const updatedRoom = await Room.findById(room.id);
+    const host = await Host.findById(updatedRoom.host);
+    expect(host.user.toString()).toBe(bob.id);
+  });
+
+  // Alice recharge sa page : elle revient avant la fin du délai, elle reste dans la room
+  it('should keep a player who comes back in time', async () => {
+    absence.delay = 300;
+    const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
+    await createRoom(alice, 'ROOM31');
+    const address = `${apiUrl}?room=ROOM31&token=${generateToken(alice)}`;
+    const firstSocket = await openSocket(address);
+    await waitForMessage(firstSocket, 'presence');
+
+    await closeSocket(firstSocket);
+    const secondSocket = await openSocket(address);
+    await waitForMessage(secondSocket, 'presence');
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const participant = await Participant.findOne({ user: alice.id });
+    expect(participant).not.toBe(null);
+  });
+
+  // Bob rejoint la room : Alice, dans la salle d'attente, est prévenue tout de suite
+  it('should tell the waiting room when a player joins', async () => {
+    const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
+    const bob = await createUser({ username: 'bob', email: 'bob@example.com' });
+    await createRoom(alice, 'ROOM32');
+    const socket = await openSocket(`${apiUrl}?room=ROOM32&token=${generateToken(alice)}`);
+    await waitForMessage(socket, 'presence');
+
+    await supertest(app)
+      .post('/rooms/ROOM32/participants')
+      .set('Authorization', `Bearer ${generateToken(bob)}`);
+
+    const message = await waitForMessage(socket, 'room-updated');
+    expect(message).toEqual({ type: 'room-updated' });
+  });
+});
+
 // Connecte un joueur au serveur de test (sans compte)
 function connectPlayer(room, name) {
   return openSocket(`${testUrl}?room=${room}&name=${name}`);
@@ -219,6 +304,14 @@ function openSocket(address) {
 
   return new Promise((resolve) => {
     socket.on('open', () => resolve(socket));
+  });
+}
+
+// Ferme la connexion du joueur et attend qu'elle soit bien fermée
+function closeSocket(socket) {
+  return new Promise((resolve) => {
+    socket.on('close', resolve);
+    socket.close();
   });
 }
 

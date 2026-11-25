@@ -188,7 +188,7 @@ if (location.protocol === 'http:' || location.protocol === 'https:') {
     url = url + `&name=${encodeURIComponent(myName)}`;
   }
 
-  network = connect(url, handleServerMessage, showConnectionStatus);
+  network = connect(url, handleServerMessage, showConnectionStatus, onConnectionRefused);
 }
 
 function sendToOthers(message) {
@@ -200,6 +200,14 @@ function sendToOthers(message) {
 function dispatch(message) {
   board.apply(message);
   sendToOthers(message);
+}
+
+// Le serveur refuse la connexion : la partie est finie (room supprimée), ou on n'en fait plus partie
+// (parti trop longtemps, ou on a rejoint une autre room)
+function onConnectionRefused() {
+  if (serverRounds && gameOver.hidden) {
+    showGameOver("Cette partie est terminée, ou tu n'en fais plus partie.", []);
+  }
 }
 
 function handleServerMessage(message) {

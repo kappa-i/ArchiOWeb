@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { createHttpError } from '../lib/errors.js';
+import { findPlayersInOrder, removePlayer } from '../lib/rooms.js';
 import { authenticate, loadCurrentUser } from '../middleware/auth.js';
 import {
   loadParticipantFromParams,
@@ -8,9 +9,7 @@ import {
   requireRoomHost,
   requireRoomPlayer,
 } from '../middleware/rooms.js';
-import Host from '../models/host.js';
 import Participant from '../models/participant.js';
-import Room from '../models/room.js';
 import Settings from '../models/settings.js';
 import User from '../models/user.js';
 
@@ -100,50 +99,17 @@ router.delete(
   loadRoomFromParams,
   loadParticipantFromParams,
   async (req, res) => {
-    const room = req.room;
     const leavingUserId = req.participant.user.toString();
 
     if (leavingUserId !== req.currentUserId) {
       throw createHttpError(403, 'You can only remove yourself from a room');
     }
 
-    await Participant.deleteOne({ _id: req.participant.id });
-
-    const remainingPlayers = await findPlayersInOrder(room);
-
-    // Plus aucun joueur : la room est supprimée avec ses paramètres et ses participants
-    if (remainingPlayers.length === 0) {
-      await Participant.deleteMany({ room: room.id });
-      await Settings.deleteOne({ room: room.id });
-      await Room.deleteOne({ _id: room.id });
-
-      return res.sendStatus(204);
-    }
-
-    // L'hôte est parti : le joueur arrivé le plus tôt devient le nouvel hôte
-    const host = await Host.findById(room.host);
-
-    if (host.user.toString() === leavingUserId) {
-      const newHostUserId = remainingPlayers[0].user;
-
-      let newHost = await Host.findOne({ user: newHostUserId });
-      if (!newHost) {
-        newHost = await Host.create({ user: newHostUserId });
-      }
-
-      room.host = newHost.id;
-      await room.save();
-    }
+    await removePlayer(req.room, req.participant);
 
     res.sendStatus(204);
   },
 );
-
-// Joueurs de la room (sans les exclus), du premier arrivé au dernier
-function findPlayersInOrder(room) {
-  // _id en second : départage deux joueurs arrivés à la même milliseconde
-  return Participant.find({ room: room.id, excluded: false }).sort({ joinedAt: 1, _id: 1 });
-}
 
 // Réponse JSON d'un participant, avec le nom de l'utilisateur
 function formatParticipant(participant, user) {

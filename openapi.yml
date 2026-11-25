@@ -138,6 +138,10 @@ paths:
           $ref: '#/components/responses/ValidationError'
     delete:
       summary: Delete the authenticated user.
+      description: >-
+        The user first leaves every room they are in (same rules as `DELETE /rooms/{code}/participants/{id}`:
+        the host role goes to the next player, and a room without players is deleted).
+        Then the account and the results of their games are deleted.
       tags:
         - users
       security:

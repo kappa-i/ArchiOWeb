@@ -2,12 +2,11 @@
 
 Bugs et incohérences repérés en relisant le code, à corriger plus tard.
 
-## 1. Supprimer son compte casse les rooms où on joue
+## 1. ~~Supprimer son compte casse les rooms où on joue~~ — corrigé
 
 - **Où** : `routes/users.js` (`DELETE /users/me`)
-- **Problème** : on supprime le `User`, mais pas ses `Participant` ni son `Host`.
-- **Conséquence** : `GET /rooms/:code/participants` fait `populate('user')`, qui renvoie `null` pour ce joueur. `formatParticipant` plante sur `user.id` → **500** pour toute la room.
-- **Piste** : en supprimant le compte, quitter aussi ses rooms (même logique que `DELETE /rooms/:code/participants/:id`).
+- **Problème** : on supprimait le `User`, mais pas ses `Participant` ni son `Host`. `GET /rooms/:code/participants` plantait alors (**500**) pour toute la room.
+- **Correction** : avant de supprimer le compte, l'utilisateur quitte toutes ses rooms avec la même logique que `DELETE /rooms/:code/participants/:id` (fonction `removePlayer` dans `lib/rooms.js`).
 
 ## 2. Quitter une partie en cours n'est pas géré
 

@@ -1,0 +1,515 @@
+/* ==========================================================================
+   Devin'Art · classement
+   (les couleurs, le fond, les cartes et les boutons viennent de style.css et lobby.css)
+   ========================================================================== */
+
+.board-intro {
+  text-align: center;
+}
+
+/* Le filtre par période : les mêmes boutons que la difficulté de la salle d'attente */
+.period-choices {
+  max-width: 560px;
+  margin: 18px auto 0;
+  background: var(--glass);
+  box-shadow: var(--shadow-small);
+}
+
+/* --- Podium ---------------------------------------------------------------- */
+
+.podium-card {
+  padding: 28px 20px 0;
+  overflow: hidden;
+}
+
+.podium {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  align-items: end;
+  gap: 14px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+/* Le 1er au milieu, le 2e à gauche, le 3e à droite (même s'il y a moins de 3 joueurs) */
+.podium-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.podium-step.is-rank-1 {
+  grid-column: 2;
+}
+
+.podium-step.is-rank-2 {
+  grid-column: 1;
+}
+
+.podium-step.is-rank-3 {
+  grid-column: 3;
+}
+
+.podium-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding-bottom: 14px;
+  text-align: center;
+}
+
+.podium-player .crown {
+  position: static;
+  width: 38px;
+  height: 38px;
+  margin-bottom: -10px;
+  translate: none;
+}
+
+.podium-avatar {
+  width: 68px;
+  height: 68px;
+  margin: 0;
+  font-size: 22px;
+  border-width: 4px;
+}
+
+.is-rank-1 .podium-avatar {
+  width: 88px;
+  height: 88px;
+  font-size: 28px;
+  border-color: #ffd23f;
+}
+
+.podium-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podium-points {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+.is-rank-1 .podium-points {
+  font-size: 26px;
+}
+
+.podium-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.podium-stats li {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.podium-stats strong {
+  font-size: 16px;
+  color: var(--ink);
+}
+
+/* Les marches : or, argent, bronze */
+.podium-block {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  border-radius: 20px 20px 0 0;
+  box-shadow: inset 0 6px 0 rgba(255, 255, 255, 0.45);
+}
+
+.podium-rank {
+  font-size: 42px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(43, 35, 80, 0.25);
+}
+
+.is-rank-1 .podium-block {
+  height: 120px;
+  background: linear-gradient(180deg, #ffd84d, #ffaa1f);
+}
+
+.is-rank-2 .podium-block {
+  height: 88px;
+  background: linear-gradient(180deg, #e4e7f5, #aab1cc);
+}
+
+.is-rank-3 .podium-block {
+  height: 64px;
+  background: linear-gradient(180deg, #ffc8a0, #e08a4f);
+}
+
+.empty-text {
+  margin: 8px 0 24px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+/* --- Tendances ------------------------------------------------------------- */
+
+.trends {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.trend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 18px;
+  border-radius: 24px;
+}
+
+.trend-emoji {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  font-size: 28px;
+  background: var(--accent-light);
+}
+
+.trend div {
+  min-width: 0;
+}
+
+.trend-name {
+  display: block;
+  overflow: hidden;
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trend-text {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+/* --- Liste ----------------------------------------------------------------- */
+
+.list-card {
+  padding: 20px;
+}
+
+.list-tools {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow:
+    inset 0 -3px 0 rgba(90, 60, 224, 0.1),
+    0 2px 8px -4px rgba(43, 35, 80, 0.2);
+  transition: border-color 0.2s;
+}
+
+.search:focus-within {
+  border-color: var(--accent);
+}
+
+.search .icon {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 0;
+  border: 0;
+  outline: none;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  background: transparent;
+}
+
+.find-me:hover {
+  color: var(--accent-dark);
+}
+
+.list-head,
+.board-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 72px 72px 90px;
+  align-items: center;
+  gap: 8px;
+}
+
+.list-head {
+  padding: 0 14px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.board-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-row {
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.board-row.is-me {
+  background: #fff;
+  box-shadow: inset 0 0 0 2.5px var(--accent);
+}
+
+.row-rank {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* Les 3 premiers ont une médaille */
+.is-rank-1 .row-rank {
+  color: #fff;
+  background: linear-gradient(180deg, #ffd84d, #ffaa1f);
+}
+
+.is-rank-2 .row-rank {
+  color: #fff;
+  background: linear-gradient(180deg, #e4e7f5, #aab1cc);
+}
+
+.is-rank-3 .row-rank {
+  color: #fff;
+  background: linear-gradient(180deg, #ffc8a0, #e08a4f);
+}
+
+.row-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.row-player .avatar {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.row-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.column-stat {
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.column-points {
+  text-align: right;
+}
+
+.board-row .column-points {
+  font-size: 17px;
+  color: var(--accent-dark);
+}
+
+/* --- Badges : évolution en 24 h et série de victoires ---------------------- */
+
+.badges {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge.is-up {
+  color: #14935f;
+  background: #dcfaee;
+}
+
+.badge.is-down {
+  color: #c0284a;
+  background: #ffe2e8;
+}
+
+.badge.is-new {
+  color: var(--accent-dark);
+  background: var(--accent-light);
+}
+
+.badge.is-streak {
+  color: #c25e00;
+  background: #fff0dc;
+}
+
+/* --- Pagination ------------------------------------------------------------ */
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.pager:empty {
+  display: none;
+}
+
+.page-button {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  color: var(--accent-dark);
+  background: #fff;
+  box-shadow: inset 0 -3px 0 rgba(90, 60, 224, 0.12);
+}
+
+.page-button.is-current {
+  color: #fff;
+  background: var(--accent);
+}
+
+.page-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* --- Téléphone ------------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .podium-card {
+    padding: 22px 10px 0;
+  }
+
+  .podium {
+    gap: 6px;
+  }
+
+  .podium-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 18px;
+  }
+
+  .is-rank-1 .podium-avatar {
+    width: 66px;
+    height: 66px;
+    font-size: 22px;
+  }
+
+  .podium-name {
+    font-size: 15px;
+  }
+
+  .podium-points,
+  .is-rank-1 .podium-points {
+    font-size: 17px;
+  }
+
+  /* Sur petit écran : seulement les victoires et les parties sous chaque joueur */
+  .podium-stats {
+    gap: 4px;
+  }
+
+  .podium-stats li:nth-child(n + 3) {
+    display: none;
+  }
+
+  .podium-player .badges {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .is-rank-1 .podium-block {
+    height: 96px;
+  }
+
+  .is-rank-2 .podium-block {
+    height: 70px;
+  }
+
+  .is-rank-3 .podium-block {
+    height: 52px;
+  }
+
+  .podium-rank {
+    font-size: 32px;
+  }
+
+  .list-card {
+    padding: 14px;
+  }
+
+  /* La liste garde le rang, le joueur et les points */
+  .list-head,
+  .board-row {
+    grid-template-columns: 36px minmax(0, 1fr) 70px;
+  }
+
+  .list-head .column-stat,
+  .board-row .column-stat {
+    display: none;
+  }
+
+  .board-row {
+    padding: 8px 10px;
+  }
+
+  .row-player {
+    gap: 8px;
+  }
+}

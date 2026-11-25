@@ -31,6 +31,16 @@ describe('GET /play/lobby.html', () => {
   });
 });
 
+describe('GET /play/leaderboard.html', () => {
+  // La page du classement est servie par l'API
+  it('should serve the leaderboard page', async () => {
+    const res = await supertest(app).get('/play/leaderboard.html');
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/html');
+  });
+});
+
 describe('GET /unknown', () => {
   it('should respond with 404 Not Found', async () => {
     const res = await supertest(app).get('/unknown');

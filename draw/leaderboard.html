@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#b7a8ff" />
+    <title>Devin'Art · Classement</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Même style de base que la salle d'attente, puis le style propre au classement -->
+    <link rel="icon" href="logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="lobby.css" />
+    <link rel="stylesheet" href="leaderboard.css" />
+
+    <!-- GSAP : les petites animations élastiques (la page marche aussi sans) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script type="module" src="leaderboard.js"></script>
+  </head>
+
+  <body class="lobby-page">
+    <div class="backdrop" aria-hidden="true">
+      <span class="blob blob-1"></span>
+      <span class="blob blob-2"></span>
+      <span class="blob blob-3"></span>
+    </div>
+
+    <main class="lobby">
+      <header class="lobby-header">
+        <a class="brand" href="lobby.html">
+          <img class="logo" src="logo.svg" alt="" />
+          <span class="brand-name">Devin'<span>Art</span></span>
+        </a>
+
+        <a class="nav-link pill" href="lobby.html">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          <span>Menu</span>
+        </a>
+      </header>
+
+      <section class="board-intro">
+        <h1 class="home-title">Classement</h1>
+        <p class="subtitle">Les joueurs qui ont marqué le plus de points.</p>
+
+        <!-- Filtre par période -->
+        <div class="choices period-choices" role="group" aria-label="Période">
+          <button data-period="all" aria-pressed="true">Depuis toujours</button>
+          <button data-period="month" aria-pressed="false">30 jours</button>
+          <button data-period="week" aria-pressed="false">7 jours</button>
+          <button data-period="day" aria-pressed="false">24 h</button>
+        </div>
+      </section>
+
+      <!-- Podium : les 3 meilleurs de la période -->
+      <section class="card glass podium-card">
+        <ol class="podium" id="podium"></ol>
+        <p class="empty-text" id="podium-empty" hidden>
+          Personne n'a encore joué sur cette période. Lance une partie !
+        </p>
+      </section>
+
+      <!-- Tendances : en tête depuis…, grosse percée, en feu -->
+      <section class="trends" id="trends"></section>
+
+      <!-- Liste complète, avec recherche et pagination -->
+      <section class="card glass list-card">
+        <div class="list-tools">
+          <label class="search">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-4-4" />
+            </svg>
+            <input
+              id="search"
+              type="search"
+              placeholder="Chercher un pseudo"
+              autocomplete="off"
+              maxlength="20"
+              aria-label="Chercher un pseudo"
+            />
+          </label>
+          <button class="secondary-button find-me" id="find-me" hidden>Me trouver</button>
+        </div>
+
+        <div class="list-head" aria-hidden="true">
+          <span>#</span>
+          <span>Joueur</span>
+          <span class="column-stat">Parties</span>
+          <span class="column-stat">Victoires</span>
+          <span class="column-points">Points</span>
+        </div>
+
+        <ol class="board-list" id="ranking"></ol>
+        <p class="empty-text" id="ranking-empty" hidden></p>
+
+        <nav class="pager" id="pager" aria-label="Pages du classement"></nav>
+      </section>
+    </main>
+
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+  </body>
+</html>

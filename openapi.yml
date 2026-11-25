@@ -183,9 +183,13 @@ paths:
     get:
       summary: Get the paginated player leaderboard.
       description: >-
-        Players are ranked by their total points in the selected period.
-        `week` and `month` cover the last 7 and 30 days. Players without results
-        in the selected period are not included.
+        Players are ranked by their total points in the selected period
+        (`day`, `week` and `month` cover the last 24 hours, 7 days and 30 days).
+        Players without results in the selected period are not included.
+        Each player gets their stats in the period, the places won or lost in the last 24 hours (`movement`)
+        and their current win streak (`winStreak`).
+        With `search`, only the players whose username contains the text are returned,
+        and they keep their rank in the whole leaderboard.
       tags:
         - users
       parameters:
@@ -206,17 +210,14 @@ paths:
             minimum: 1
             maximum: 100
             default: 10
-        - name: period
+        - $ref: '#/components/parameters/LeaderboardPeriod'
+        - name: search
           in: query
           required: false
-          description: Rolling period used to filter game results.
+          description: Only the players whose username contains this text (case insensitive).
           schema:
             type: string
-            enum:
-              - all
-              - week
-              - month
-            default: all
+            example: ali
       responses:
         200:
           description: The requested page of the leaderboard.
@@ -233,13 +234,45 @@ paths:
               examples:
                 invalidPeriod:
                   value:
-                    message: period must be all, week or month
+                    message: period must be all, month, week or day
                 invalidPage:
                   value:
                     message: page must be a positive integer
                 pageSizeTooLarge:
                   value:
                     message: pageSize must be at most 100
+                invalidSearch:
+                  value:
+                    message: search must be a string
+
+  /users/leaderboard/highlights:
+    get:
+      summary: Get the podium and the trends of the leaderboard.
+      description: >-
+        For the selected period: the 3 best players (same fields as the leaderboard),
+        the leader and since when they are first (`since` is null if several players are tied at the top),
+        the player who won the most places in the last 24 hours,
+        and the longest current win streak (at least 2 wins in a row).
+        Each trend is null when nobody matches it.
+      tags:
+        - users
+      parameters:
+        - $ref: '#/components/parameters/LeaderboardPeriod'
+      responses:
+        200:
+          description: The podium and the trends.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardHighlights'
+        400:
+          description: The period is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: period must be all, month, week or day
 
   /rooms:
     post:
@@ -692,6 +725,21 @@ components:
       schema:
         type: string
         example: 66b9d6c2f1a2b3c4d5e6f7c1
+    LeaderboardPeriod:
+      name: period
+      in: query
+      required: false
+      description: >-
+        Rolling period used to filter game results: all time,
+        the last 30 days, the last 7 days or the last 24 hours.
+      schema:
+        type: string
+        enum:
+          - all
+          - month
+          - week
+          - day
+        default: all
 
   headers:
     Location:
@@ -818,31 +866,81 @@ components:
         - guesser
         - drawer
 
+    LeaderboardPlayer:
+      type: object
+      properties:
+        rank:
+          type: integer
+          description: Rank in the whole leaderboard of the period (1 = first).
+          example: 1
+        userId:
+          type: string
+          example: 66b9d6c2f1a2b3c4d5e6f7a8
+        username:
+          type: string
+          example: jdoe
+        totalPoints:
+          type: integer
+          example: 450
+        gamesPlayed:
+          type: integer
+          example: 5
+        wins:
+          type: integer
+          description: Games finished at the first place.
+          example: 2
+        winRate:
+          type: integer
+          description: Percentage of games won, from 0 to 100.
+          example: 40
+        bestScore:
+          type: integer
+          example: 140
+        wordsFound:
+          type: integer
+          example: 12
+        firstFinds:
+          type: integer
+          description: Words found before every other player.
+          example: 4
+        successfulDrawings:
+          type: integer
+          description: Drawings found by at least one player.
+          example: 3
+        movement:
+          type:
+            - integer
+            - 'null'
+          description: >-
+            Places won (positive) or lost (negative) compared to the same leaderboard 24 hours ago.
+            Null if the player was not ranked 24 hours ago.
+          example: 2
+        winStreak:
+          type: integer
+          description: Wins in a row in the last games of the period (0 if the last game was not won).
+          example: 2
+      required:
+        - rank
+        - userId
+        - username
+        - totalPoints
+        - gamesPlayed
+        - wins
+        - winRate
+        - bestScore
+        - wordsFound
+        - firstFinds
+        - successfulDrawings
+        - movement
+        - winStreak
+
     LeaderboardResponse:
       type: object
       properties:
         items:
           type: array
           items:
-            type: object
-            properties:
-              rank:
-                type: integer
-                example: 1
-              userId:
-                type: string
-                example: 66b9d6c2f1a2b3c4d5e6f7a8
-              username:
-                type: string
-                example: jdoe
-              totalPoints:
-                type: integer
-                example: 450
-            required:
-              - rank
-              - userId
-              - username
-              - totalPoints
+            $ref: '#/components/schemas/LeaderboardPlayer'
         pagination:
           type: object
           properties:
@@ -866,6 +964,80 @@ components:
       required:
         - items
         - pagination
+
+    LeaderboardHighlights:
+      type: object
+      properties:
+        podium:
+          type: array
+          description: The 3 best players of the period (fewer if fewer players are ranked).
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/LeaderboardPlayer'
+        leader:
+          type:
+            - object
+            - 'null'
+          properties:
+            userId:
+              type: string
+              example: 66b9d6c2f1a2b3c4d5e6f7a8
+            username:
+              type: string
+              example: jdoe
+            since:
+              type:
+                - string
+                - 'null'
+              format: date-time
+              description: When the leader went ahead of every other player in the period.
+          required:
+            - userId
+            - username
+            - since
+        biggestClimber:
+          type:
+            - object
+            - 'null'
+          description: The player who won the most places in the last 24 hours.
+          properties:
+            userId:
+              type: string
+              example: 66b9d6c2f1a2b3c4d5e6f7a8
+            username:
+              type: string
+              example: jdoe
+            places:
+              type: integer
+              example: 3
+          required:
+            - userId
+            - username
+            - places
+        longestWinStreak:
+          type:
+            - object
+            - 'null'
+          description: The longest current win streak (at least 2 wins in a row).
+          properties:
+            userId:
+              type: string
+              example: 66b9d6c2f1a2b3c4d5e6f7a8
+            username:
+              type: string
+              example: jdoe
+            wins:
+              type: integer
+              example: 4
+          required:
+            - userId
+            - username
+            - wins
+      required:
+        - podium
+        - leader
+        - biggestClimber
+        - longestWinStreak
 
     Room:
       type: object

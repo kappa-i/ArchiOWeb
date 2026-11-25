@@ -3,8 +3,14 @@ import express from 'express';
 import mongoose from 'mongoose';
 
 import { createHttpError } from '../lib/errors.js';
+import {
+  computeLeaderboard,
+  findBiggestClimber,
+  findLongestWinStreak,
+} from '../lib/leaderboard.js';
 import { removePlayer } from '../lib/rooms.js';
 import { authenticate, loadCurrentUser } from '../middleware/auth.js';
+import { readPeriod } from '../middleware/leaderboard.js';
 import { paginate } from '../middleware/pagination.js';
 import Host from '../models/host.js';
 import Participant from '../models/participant.js';
@@ -82,108 +88,66 @@ router.delete('/me', authenticate, loadCurrentUser, async (req, res) => {
   res.sendStatus(204);
 });
 
-// Périodes acceptées par le filtre ?period= du classement
-const leaderboardPeriods = ['all', 'week', 'month'];
-
-// Classement des joueurs par total de points, paginé, avec un filtre optionnel par période
-router.get('/leaderboard', paginate, async (req, res) => {
+// Classement des joueurs par total de points, paginé.
+// Filtres optionnels : ?period= (all, month, week, day) et ?search= (le pseudo contient ce texte).
+router.get('/leaderboard', paginate, readPeriod, async (req, res) => {
   const pagination = req.pagination;
+  const leaderboard = await computeLeaderboard(req.period);
 
-  let period = 'all';
-  if (req.query.period !== undefined) {
-    period = req.query.period;
+  let players = leaderboard.players;
+
+  // Recherche par pseudo, sans tenir compte des majuscules. Chaque joueur garde son rang du classement complet.
+  if (req.query.search !== undefined) {
+    if (typeof req.query.search !== 'string') {
+      throw createHttpError(400, 'search must be a string');
+    }
+
+    const search = req.query.search.trim().toLowerCase();
+    const foundPlayers = [];
+
+    for (const player of players) {
+      if (player.username.toLowerCase().includes(search)) {
+        foundPlayers.push(player);
+      }
+    }
+
+    players = foundPlayers;
   }
 
-  if (!leaderboardPeriods.includes(period)) {
-    throw createHttpError(400, 'period must be all, week or month');
-  }
-
-  // Filtre sur la date des parties : les 7 ou 30 derniers jours (pas de filtre pour « all »)
-  const filter = {};
-  const oneDay = 24 * 60 * 60 * 1000;
-
-  if (period === 'week') {
-    filter.date = { $gte: new Date(Date.now() - 7 * oneDay) };
-  }
-
-  if (period === 'month') {
-    filter.date = { $gte: new Date(Date.now() - 30 * oneDay) };
-  }
-
-  // Total des points par joueur, du meilleur au moins bon, seulement pour la page demandée
-  const totals = await Result.aggregate([
-    {
-      $match: filter,
-    },
-    {
-      $group: {
-        _id: '$user',
-        totalPoints: { $sum: '$score' },
-      },
-    },
-    {
-      // À égalité de points, on trie par id pour que l'ordre ne change pas d'une page à l'autre
-      $sort: { totalPoints: -1, _id: 1 },
-    },
-    {
-      $skip: pagination.skip,
-    },
-    {
-      $limit: pagination.pageSize,
-    },
-    {
-      // Ajoute le compte du joueur (pour son pseudo)
-      $lookup: {
-        from: 'users',
-        localField: '_id',
-        foreignField: '_id',
-        as: 'user',
-      },
-    },
-    {
-      $unwind: '$user',
-    },
-  ]);
-
-  // Nombre total de joueurs classés (toutes les pages), pour calculer le nombre de pages
-  const count = await Result.aggregate([
-    {
-      $match: filter,
-    },
-    {
-      $group: { _id: '$user' },
-    },
-    {
-      $count: 'totalItems',
-    },
-  ]);
-
-  let totalItems = 0;
-  if (count.length > 0) {
-    totalItems = count[0].totalItems;
-  }
-
-  // Le rang tient compte des pages précédentes : le 1er de la page 2 (10 par page) est 11e
-  const items = [];
-  for (let i = 0; i < totals.length; i++) {
-    const total = totals[i];
-
-    items.push({
-      rank: pagination.skip + i + 1,
-      userId: total.user._id.toString(),
-      username: total.user.username,
-      totalPoints: total.totalPoints,
-    });
-  }
+  // Seulement les joueurs de la page demandée (ex. page 2 de 10 : du 11e au 20e)
+  const items = players.slice(pagination.skip, pagination.skip + pagination.pageSize);
 
   res.send({
     items: items,
     pagination: {
       page: pagination.page,
       pageSize: pagination.pageSize,
-      totalItems: totalItems,
-      totalPages: Math.ceil(totalItems / pagination.pageSize),
+      totalItems: players.length,
+      totalPages: Math.ceil(players.length / pagination.pageSize),
     },
+  });
+});
+
+// Le podium (3 premiers) et les tendances du classement de la période :
+// qui est en tête et depuis quand, la plus grosse progression en 24 h, la plus longue série de victoires
+router.get('/leaderboard/highlights', readPeriod, async (req, res) => {
+  const leaderboard = await computeLeaderboard(req.period);
+  const players = leaderboard.players;
+
+  let leader = null;
+  if (players.length > 0) {
+    leader = {
+      userId: players[0].userId,
+      username: players[0].username,
+      since: leaderboard.leaderSince,
+    };
+  }
+
+  res.send({
+    podium: players.slice(0, 3),
+    leader: leader,
+    biggestClimber: findBiggestClimber(players),
+    longestWinStreak: findLongestWinStreak(players),
   });
 });
 

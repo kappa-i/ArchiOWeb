@@ -104,7 +104,7 @@ Les opérations (`op.kind`) :
 1. L'hôte lance la partie (`PATCH /rooms/:code`). 5 secondes plus tard, le premier tour commence.
 2. **Une manche = chaque joueur dessine une fois**, dans l'ordre d'arrivée. Nombre de manches et durée d'un tour = réglages de la room.
 3. À chaque tour, un mot est tiré au hasard dans la base (jamais deux fois le même dans la partie). **Il faut avoir chargé les mots** : `npm run seed:words`. Seul le dessinateur peut dessiner (`canDraw()` dans `lib/realtime.js`).
-4. Les autres proposent des mots avec **`POST /rooms/:code/drawings/:id/guesses`** (documenté dans `openapi.yml`). Majuscules, accents et espaces autour ne comptent pas.
+4. Les autres proposent des mots avec **`POST /rooms/:code/drawings/:id/guesses`** (documenté dans `openapi.yml`). Majuscules, accents et espaces autour ne comptent pas, et « oe » vaut « œ » (`coeur` = `cœur`).
 5. Points : celui qui trouve gagne `50 + 100 × temps restant / durée du tour` (entre 50 et 150), le dessinateur gagne 25 par joueur qui trouve.
 6. Le tour se termine quand le temps est écoulé ou que tout le monde a trouvé : le dessin est enregistré (`Drawing.data`), le mot est révélé, pause de 4 secondes, tour suivant.
 7. Fin de partie : un résultat par joueur (`Result`, utilisé par `GET /users/:id/stats`), le classement est envoyé, puis la room et tout son contenu sont supprimés.

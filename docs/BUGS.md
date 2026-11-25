@@ -34,3 +34,9 @@ Bugs et incohérences repérés en relisant le code, à corriger plus tard.
 
 - `README.md` parle de MongoDB 8 alors que la CI utilise la 7.0.
 - `docs/REQUIREMENTS.md` : presque rien n'est coché alors qu'une partie est faite (inscription, authentification, validation…).
+
+## 7. ~~« coeur » refusé pour le mot « cœur »~~ — corrigé
+
+- **Où** : `lib/game.js` (`simplify`, utilisé par `POST /rooms/:code/drawings/:id/guesses`)
+- **Problème** : « œ » n'est pas une lettre accentuée, `simplify` le gardait tel quel. Un joueur qui tapait `coeur`, `oeuf` ou `oeil` avait faux.
+- **Correction** : « œ » est remplacé par « oe » avant de comparer.

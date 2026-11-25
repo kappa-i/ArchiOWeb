@@ -9,12 +9,14 @@ import {
   disconnectFromDatabase,
 } from './utils.js';
 
+// Connexion à la base de test, vidée avant chaque test, déconnexion à la fin
 beforeAll(connectToDatabase);
 beforeEach(cleanUpDatabase);
 afterAll(disconnectFromDatabase);
 
-const dayInMilliseconds = 24 * 60 * 60 * 1000;
+const oneDay = 24 * 60 * 60 * 1000;
 
+// Enregistre une partie terminée pour ce joueur, avec ce score (aujourd'hui par défaut)
 function addResult(user, score, date = new Date()) {
   return createResult(user, {
     score: score,
@@ -24,11 +26,11 @@ function addResult(user, score, date = new Date()) {
 }
 
 describe('GET /users/leaderboard', () => {
-  it('should rank users by their total points with default pagination', async () => {
+  // Sans paramètre : les joueurs classés par total de points, page 1 de 10 joueurs
+  it('should rank the players by their total points', async () => {
     const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
     const bob = await createUser({ username: 'bob', email: 'bob@example.com' });
     await createUser({ username: 'charlie', email: 'charlie@example.com' });
-
     await addResult(alice, 150);
     await addResult(alice, 50);
     await addResult(bob, 175);
@@ -43,74 +45,82 @@ describe('GET /users/leaderboard', () => {
       ],
       pagination: {
         page: 1,
-        limit: 10,
+        pageSize: 10,
         totalItems: 2,
         totalPages: 1,
       },
     });
   });
 
-  it('should return the requested page and preserve each player rank', async () => {
+  // Page 2 avec 1 joueur par page : bob, qui garde son rang (2e)
+  it('should return the requested page', async () => {
     const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
     const bob = await createUser({ username: 'bob', email: 'bob@example.com' });
     const charlie = await createUser({ username: 'charlie', email: 'charlie@example.com' });
-
     await addResult(alice, 300);
     await addResult(bob, 200);
     await addResult(charlie, 100);
 
-    const res = await supertest(app).get('/users/leaderboard?page=2&limit=1');
+    const res = await supertest(app).get('/users/leaderboard?page=2&pageSize=1');
 
     expect(res.status).toBe(200);
-    expect(res.body.items).toEqual([
-      { rank: 2, userId: bob.id, username: 'bob', totalPoints: 200 },
-    ]);
-    expect(res.body.pagination).toEqual({
-      page: 2,
-      limit: 1,
-      totalItems: 3,
-      totalPages: 3,
+    expect(res.body).toEqual({
+      items: [{ rank: 2, userId: bob.id, username: 'bob', totalPoints: 200 }],
+      pagination: {
+        page: 2,
+        pageSize: 1,
+        totalItems: 3,
+        totalPages: 3,
+      },
     });
   });
 
-  it('should filter results using rolling week and month periods', async () => {
+  // Filtre « week » : seule la partie d'il y a 2 jours compte, pas celle d'il y a 8 jours
+  it('should only count the games of the last 7 days with period=week', async () => {
     const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
-    const recentDate = new Date(Date.now() - 2 * dayInMilliseconds);
-    const oldDate = new Date(Date.now() - 8 * dayInMilliseconds);
+    await addResult(alice, 70, new Date(Date.now() - 2 * oneDay));
+    await addResult(alice, 900, new Date(Date.now() - 8 * oneDay));
 
-    await addResult(alice, 70, recentDate);
-    await addResult(alice, 900, oldDate);
+    const res = await supertest(app).get('/users/leaderboard?period=week');
 
-    const weekRes = await supertest(app).get('/users/leaderboard?period=week');
-
-    expect(weekRes.status).toBe(200);
-    expect(weekRes.body.items[0].totalPoints).toBe(70);
-    expect(weekRes.body.pagination.totalItems).toBe(1);
-
-    const monthRes = await supertest(app).get('/users/leaderboard?period=month');
-
-    expect(monthRes.status).toBe(200);
-    expect(monthRes.body.items[0].totalPoints).toBe(970);
-    expect(monthRes.body.pagination.totalItems).toBe(1);
+    expect(res.status).toBe(200);
+    expect(res.body.items[0].totalPoints).toBe(70);
   });
 
-  it('should respond with 400 for an unsupported period', async () => {
+  // Filtre « month » : les deux parties comptent, mais pas celle d'il y a 40 jours
+  it('should only count the games of the last 30 days with period=month', async () => {
+    const alice = await createUser({ username: 'alice', email: 'alice@example.com' });
+    await addResult(alice, 70, new Date(Date.now() - 2 * oneDay));
+    await addResult(alice, 900, new Date(Date.now() - 8 * oneDay));
+    await addResult(alice, 5000, new Date(Date.now() - 40 * oneDay));
+
+    const res = await supertest(app).get('/users/leaderboard?period=month');
+
+    expect(res.status).toBe(200);
+    expect(res.body.items[0].totalPoints).toBe(970);
+  });
+
+  // Période inconnue : refusée
+  it('should respond with 400 for an unknown period', async () => {
     const res = await supertest(app).get('/users/leaderboard?period=year');
 
     expect(res.status).toBe(400);
     expect(res.body.message).toBe('period must be all, week or month');
   });
 
+  // Page 0 : les pages commencent à 1
   it('should respond with 400 for an invalid page', async () => {
     const res = await supertest(app).get('/users/leaderboard?page=0');
 
     expect(res.status).toBe(400);
+    expect(res.body.message).toBe('page must be a positive integer');
   });
 
-  it('should respond with 400 if the limit is greater than 100', async () => {
-    const res = await supertest(app).get('/users/leaderboard?limit=101');
+  // Plus de 100 joueurs par page : refusé
+  it('should respond with 400 if pageSize is greater than 100', async () => {
+    const res = await supertest(app).get('/users/leaderboard?pageSize=101');
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe('limit must be at most 100');
+    expect(res.body.message).toBe('pageSize must be at most 100');
   });
 });

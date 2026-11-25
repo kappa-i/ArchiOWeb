@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import { createHttpError } from '../lib/errors.js';
 import { removePlayer } from '../lib/rooms.js';
 import { authenticate, loadCurrentUser } from '../middleware/auth.js';
+import { paginate } from '../middleware/pagination.js';
 import Host from '../models/host.js';
 import Participant from '../models/participant.js';
 import Result from '../models/result.js';
@@ -81,85 +82,107 @@ router.delete('/me', authenticate, loadCurrentUser, async (req, res) => {
   res.sendStatus(204);
 });
 
-// Classement des joueurs par total de points, avec pagination et filtre par période
-router.get('/leaderboard', async (req, res) => {
-  const page = parsePositiveInteger(req.query.page, 1, 'page');
-  const limit = parsePositiveInteger(req.query.limit, 10, 'limit');
+// Périodes acceptées par le filtre ?period= du classement
+const leaderboardPeriods = ['all', 'week', 'month'];
 
-  if (limit > 100) {
-    throw createHttpError(400, 'limit must be at most 100');
+// Classement des joueurs par total de points, paginé, avec un filtre optionnel par période
+router.get('/leaderboard', paginate, async (req, res) => {
+  const pagination = req.pagination;
+
+  let period = 'all';
+  if (req.query.period !== undefined) {
+    period = req.query.period;
   }
 
-  const skip = (page - 1) * limit;
-  if (!Number.isSafeInteger(skip + limit)) {
-    throw createHttpError(400, 'page is too large');
-  }
-
-  const period = req.query.period === undefined ? 'all' : req.query.period;
-  if (typeof period !== 'string' || !['all', 'week', 'month'].includes(period)) {
+  if (!leaderboardPeriods.includes(period)) {
     throw createHttpError(400, 'period must be all, week or month');
   }
 
-  const match = {};
-  const dayInMilliseconds = 24 * 60 * 60 * 1000;
+  // Filtre sur la date des parties : les 7 ou 30 derniers jours (pas de filtre pour « all »)
+  const filter = {};
+  const oneDay = 24 * 60 * 60 * 1000;
 
   if (period === 'week') {
-    match.date = { $gte: new Date(Date.now() - 7 * dayInMilliseconds) };
-  } else if (period === 'month') {
-    match.date = { $gte: new Date(Date.now() - 30 * dayInMilliseconds) };
+    filter.date = { $gte: new Date(Date.now() - 7 * oneDay) };
   }
 
-  const [leaderboard] = await Result.aggregate([
-    { $match: match },
+  if (period === 'month') {
+    filter.date = { $gte: new Date(Date.now() - 30 * oneDay) };
+  }
+
+  // Total des points par joueur, du meilleur au moins bon, seulement pour la page demandée
+  const totals = await Result.aggregate([
+    {
+      $match: filter,
+    },
     {
       $group: {
         _id: '$user',
         totalPoints: { $sum: '$score' },
       },
     },
-    { $sort: { totalPoints: -1, _id: 1 } },
     {
-      $facet: {
-        items: [
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $lookup: {
-              from: User.collection.name,
-              localField: '_id',
-              foreignField: '_id',
-              as: 'user',
-            },
-          },
-          { $unwind: '$user' },
-          {
-            $project: {
-              _id: 0,
-              userId: '$_id',
-              username: '$user.username',
-              totalPoints: 1,
-            },
-          },
-        ],
-        metadata: [{ $count: 'totalItems' }],
+      // À égalité de points, on trie par id pour que l'ordre ne change pas d'une page à l'autre
+      $sort: { totalPoints: -1, _id: 1 },
+    },
+    {
+      $skip: pagination.skip,
+    },
+    {
+      $limit: pagination.pageSize,
+    },
+    {
+      // Ajoute le compte du joueur (pour son pseudo)
+      $lookup: {
+        from: 'users',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'user',
       },
+    },
+    {
+      $unwind: '$user',
     },
   ]);
 
-  const totalItems = leaderboard.metadata[0]?.totalItems || 0;
+  // Nombre total de joueurs classés (toutes les pages), pour calculer le nombre de pages
+  const count = await Result.aggregate([
+    {
+      $match: filter,
+    },
+    {
+      $group: { _id: '$user' },
+    },
+    {
+      $count: 'totalItems',
+    },
+  ]);
+
+  let totalItems = 0;
+  if (count.length > 0) {
+    totalItems = count[0].totalItems;
+  }
+
+  // Le rang tient compte des pages précédentes : le 1er de la page 2 (10 par page) est 11e
+  const items = [];
+  for (let i = 0; i < totals.length; i++) {
+    const total = totals[i];
+
+    items.push({
+      rank: pagination.skip + i + 1,
+      userId: total.user._id.toString(),
+      username: total.user.username,
+      totalPoints: total.totalPoints,
+    });
+  }
 
   res.send({
-    items: leaderboard.items.map((item, index) => ({
-      rank: skip + index + 1,
-      userId: item.userId.toString(),
-      username: item.username,
-      totalPoints: item.totalPoints,
-    })),
+    items: items,
     pagination: {
-      page: page,
-      limit: limit,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
       totalItems: totalItems,
-      totalPages: Math.ceil(totalItems / limit),
+      totalPages: Math.ceil(totalItems / pagination.pageSize),
     },
   });
 });
@@ -252,23 +275,6 @@ router.get('/:id/stats', async (req, res) => {
     },
   });
 });
-
-function parsePositiveInteger(value, defaultValue, field) {
-  if (value === undefined) {
-    return defaultValue;
-  }
-
-  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
-    throw createHttpError(400, `${field} must be a positive integer`);
-  }
-
-  const number = Number(value);
-  if (!Number.isSafeInteger(number)) {
-    throw createHttpError(400, `${field} must be a safe integer`);
-  }
-
-  return number;
-}
 
 // Vérifie le mot de passe ici, car le schéma ne voit que le hash
 function checkPassword(password) {
